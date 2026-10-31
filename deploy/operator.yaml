@@ -90,7 +90,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: llmproxy
-          image: ghcr.io/anas1412/llmp:2.0.0
+          image: ghcr.io/anas1412/llmp:0.1.0
           env:
             - name: OPERATOR_NAMESPACE
               valueFrom:
