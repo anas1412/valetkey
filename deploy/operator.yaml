@@ -86,6 +86,7 @@ spec:
       terminationGracePeriodSeconds: 60   # lets in-flight streams finish on shutdown
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532   # distroless "nonroot"
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: llmproxy
@@ -110,8 +111,8 @@ spec:
           livenessProbe:
             httpGet: { path: /healthz, port: admin }
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits: { memory: 512Mi }
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 256Mi }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

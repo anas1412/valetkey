@@ -71,13 +71,13 @@ spec:
                     type: string
                 proxyURL:
                   type: string
-                  description: Outbound HTTP proxy for this channel, e.g. http://proxy:3128
+                  description: "Outbound HTTP proxy for this channel, e.g. http://proxy:3128"
                 skipTLSVerify:
                   type: boolean
-                  description: Skip upstream TLS certificate verification (self-signed endpoints only)
+                  description: "Skip upstream TLS certificate verification (self-signed endpoints only)"
                 modelMapping:
                   type: object
-                  description: Rewrites the requested model before forwarding, e.g. {gpt-4o: my-azure-deployment}
+                  description: "Rewrites the requested model before forwarding, e.g. gpt-4o -> my-azure-deployment"
                   additionalProperties:
                     type: string
             status:
@@ -157,17 +157,17 @@ spec:
                     type: string
                 subnets:
                   type: array
-                  description: Allowed client IP ranges (IPv4 or IPv6 CIDR). Empty = any IP.
+                  description: "Allowed client IP ranges (IPv4 or IPv6 CIDR). Empty = any IP."
                   items:
                     type: string
                 rpm:
                   type: integer
                   minimum: 0
-                  description: Requests per minute for this key, multiplied by the group's rpmRatio. 0 = unlimited.
+                  description: "Requests per minute for this key, multiplied by the group's rpmRatio. 0 = unlimited."
                 tpm:
                   type: integer
                   minimum: 0
-                  description: Tokens per minute for this key, multiplied by the group's tpmRatio. 0 = unlimited.
+                  description: "Tokens per minute for this key, multiplied by the group's tpmRatio. 0 = unlimited."
             status:
               type: object
               properties:

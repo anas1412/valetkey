@@ -1,6 +1,4 @@
-node_modules/
-dist/
-build-test/
+web/node_modules/
 web/dist/
+/llmproxy
 .env
-*.js.map

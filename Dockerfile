@@ -1,23 +1,24 @@
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json tsconfig.json nest-cli.json ./
+# Dashboard
+FROM node:24-alpine AS web
+WORKDIR /web
+COPY web/package*.json ./
 RUN npm ci
-COPY src ./src
-RUN npm run build && npm prune --omit=dev
+COPY web ./
+RUN npm run build
 
-FROM node:22-alpine
-WORKDIR /app
-ENV NODE_ENV=production
+# One static binary with the dashboard embedded
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+COPY web/embed.go ./web/
+COPY --from=web /web/dist ./web/dist
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /llmproxy ./cmd/llmproxy
 
-# curl + jq for llmproxyctl
-RUN apk add --no-cache curl jq
-
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY package.json ./
-COPY scripts/llmproxyctl /usr/local/bin/llmproxyctl
-RUN chmod +x /usr/local/bin/llmproxyctl
-
-USER node
+# Runtime: the binary, CA certificates and a non-root user — no shell, no package manager.
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /llmproxy /llmproxy
 EXPOSE 8000 8081
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["/llmproxy"]
