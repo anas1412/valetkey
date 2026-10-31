@@ -48,6 +48,26 @@ func validBudget(w http.ResponseWriter, b *types.Budget) bool {
 	return true
 }
 
+// validKeySpec checks a key's budgets and expiry before it is written.
+func validKeySpec(w http.ResponseWriter, s types.ProxyKeySpec) bool {
+	if !validBudget(w, s.Budget) {
+		return false
+	}
+	for model, b := range s.ModelBudgets {
+		if _, err := budget.Parse(&b); err != nil {
+			writeMessage(w, http.StatusBadRequest, "budget for "+model+": "+err.Error())
+			return false
+		}
+	}
+	if s.ExpiresAt != "" {
+		if _, err := time.Parse(time.RFC3339, s.ExpiresAt); err != nil {
+			writeMessage(w, http.StatusBadRequest, "expiresAt must be an RFC 3339 time, e.g. 2026-12-31T23:59:59Z")
+			return false
+		}
+	}
+	return true
+}
+
 // priceView is what one channel model costs right now.
 type priceView struct {
 	Channel  string `json:"channel"`

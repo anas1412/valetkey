@@ -6,6 +6,7 @@ import { LiquidToggle } from '@/components/ui/liquid-toggle'
 import { Button } from '@/components/ui/button'
 import { ModelPicker } from '@/components/ModelPicker'
 import { ChipInput, validateCIDR } from '@/components/ChipInput'
+import { ModelBudgetsEditor, fromModelBudgetRows, toModelBudgetRows, type ModelBudgetRow } from '@/components/ModelBudgetsEditor'
 import { BudgetFields, fromBudgetDraft, toBudgetDraft, validBudgetAmount, type BudgetDraft } from '@/components/BudgetFields'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
@@ -20,7 +21,17 @@ interface Draft {
   rpm: string
   tpm: string
   budget: BudgetDraft
+  modelBudgets: ModelBudgetRow[]
+  maxTokens: string
+  expires: string // datetime-local, in the browser's time zone
   enabled: boolean
+}
+
+// datetime-local wants "YYYY-MM-DDTHH:mm" in local time.
+const toLocalInput = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
 function toDraft(k?: ProxyKey): Draft {
@@ -33,6 +44,9 @@ function toDraft(k?: ProxyKey): Draft {
     rpm: k?.spec.rpm ? String(k.spec.rpm) : '',
     tpm: k?.spec.tpm ? String(k.spec.tpm) : '',
     budget: toBudgetDraft(k?.spec.budget),
+    modelBudgets: toModelBudgetRows(k?.spec.modelBudgets),
+    maxTokens: k?.spec.maxTokens ? String(k.spec.maxTokens) : '',
+    expires: toLocalInput(k?.spec.expiresAt),
     enabled: (k?.spec.status ?? 'Enabled') === 'Enabled',
   }
 }
@@ -82,6 +96,7 @@ export function KeySheet({ open, apiKey, groups, onClose, onSaved }: {
     if (!d.name) return setError('Name the key, e.g. after the app that uses it')
     if (!d.anyModel && !d.models.length) return setError('Select at least one model, or allow all models')
     if (!validBudgetAmount(d.budget.usd)) return setError('Budget must be a dollar amount, e.g. 20 or 0.50')
+    if (d.modelBudgets.some((r) => r.model.trim() && !validBudgetAmount(r.usd))) return setError('Model budgets must be dollar amounts')
     const spec: ProxyKeySpec = {
       status: d.enabled ? 'Enabled' : 'Disabled',
       models: d.anyModel ? [] : d.models,
@@ -89,6 +104,9 @@ export function KeySheet({ open, apiKey, groups, onClose, onSaved }: {
       rpm: Number(d.rpm) || undefined,
       tpm: Number(d.tpm) || undefined,
       budget: fromBudgetDraft(d.budget),
+      modelBudgets: fromModelBudgetRows(d.modelBudgets),
+      maxTokens: Number(d.maxTokens) || undefined,
+      expiresAt: d.expires ? new Date(d.expires).toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined,
     }
     setBusy(true)
     setError(undefined)
@@ -185,6 +203,25 @@ export function KeySheet({ open, apiKey, groups, onClose, onSaved }: {
 
             <BudgetFields value={d.budget} onChange={(b) => set('budget', b)}
               hint="Requests that might go over it are refused (429). The tenant's budget applies too." />
+
+            <FormItem>
+              <FormLabel>Budgets for single models</FormLabel>
+              <ModelBudgetsEditor rows={d.modelBudgets} onChange={(r) => set('modelBudgets', r)} models={available} />
+              <FormDescription>For example at most $5 a day on an expensive model, on top of the key's budget.</FormDescription>
+            </FormItem>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormItem>
+                <FormLabel>Default max tokens</FormLabel>
+                <FormControl><Input type="number" min={1} value={d.maxTokens} placeholder="none" onChange={(e) => set('maxTokens', e.target.value)} /></FormControl>
+                <FormDescription>Added when a request sets no output cap.</FormDescription>
+              </FormItem>
+              <FormItem>
+                <FormLabel>Expires</FormLabel>
+                <FormControl><Input type="datetime-local" value={d.expires} onChange={(e) => set('expires', e.target.value)} /></FormControl>
+                <FormDescription>Empty: never. In your time zone.</FormDescription>
+              </FormItem>
+            </div>
 
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>

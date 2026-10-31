@@ -93,7 +93,7 @@ The research tenant has a \$0.50 daily budget and runs out after a few minutes.
   Prometheus:          http://localhost:9090
 
   Use kubectl:         export KUBECONFIG=$KUBECONFIG
-  Restart Valetkey:        kubectl rollout restart -n valetkey-system deploy/valetkey
+  Restart Valetkey:    kubectl rollout restart -n valetkey-system deploy/valetkey
                        (the 7 and 30 day history keeps its numbers: they come from Prometheus)
   Remove everything:   hack/demo.sh down
 MSG

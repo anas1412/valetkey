@@ -42,4 +42,15 @@ Budgets per key or tenant, in dollars per day, week or month, are covered in [Bu
 
 ## Scaling
 
-Run **one replica**. Limits, budgets and dashboard history are counted in memory per pod, and the key reconciler has no leader election yet. One pod handles a lot of traffic: the work per request is small next to the provider's response time.
+One pod handles a lot of traffic: the work per request is small next to the provider's response time. Run two for uptime:
+
+```yaml
+# values.yaml
+replicas: 2
+```
+
+- Every pod serves requests. One of them, picked with a Kubernetes Lease, mints keys and writes status; if it goes away, another takes over within seconds.
+- **Budgets are shared:** each pod saves its share of spend in the key's and tenant's status every 5 seconds and adds up the others'. Two pods can together go over a budget by what they spend within those 5 seconds.
+- **Rate limits are per pod:** with two pods, a key can make up to twice its `rpm`. Halve the limits, or keep one replica, if that matters.
+- The dashboard and its Activity log show the pod `kubectl port-forward` picked. Use [Prometheus](/guide/usage-history) for numbers across pods.
+- A PodDisruptionBudget keeps one pod running during node drains.

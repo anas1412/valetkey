@@ -26,11 +26,31 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
       - run: helm lint charts/valetkey
-      - run: bash -n scripts/valetkeyctl
+      - run: bash -n scripts/valetkeyctl hack/demo.sh hack/e2e.sh
+
+  # The playground on a kind cluster, then requests, budgets, expiry, restarts,
+  # two replicas and the alert rules (hack/e2e.sh).
+  e2e:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with: { install_only: true }
+      - uses: azure/setup-helm@v4
+      - run: hack/demo.sh up
+      - run: hack/e2e.sh
+      - name: Logs on failure
+        if: failure()
+        env: { KUBECONFIG: hack/.demo/kubeconfig }
+        run: |
+          kubectl get pods -A
+          kubectl logs -n valetkey-system deploy/valetkey --tail=200 || true
 
   # On a v* tag: container image, Helm chart (OCI) and a GitHub release.
   release:
-    needs: test
+    needs: [test, e2e]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

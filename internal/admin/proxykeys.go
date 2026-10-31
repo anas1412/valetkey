@@ -19,16 +19,24 @@ type keyView struct {
 	SecretName string             `json:"secretName,omitempty"`
 	Requests   int                `json:"requests"`
 	// "30d" when Requests comes from Prometheus, "pod" when it's since the pod started.
-	RequestsWindow string     `json:"requestsWindow"`
-	LastUsed       *int64     `json:"lastUsed,omitempty"`
-	Spend          *spendView `json:"spend,omitempty"`
+	RequestsWindow string                `json:"requestsWindow"`
+	LastUsed       *int64                `json:"lastUsed,omitempty"`
+	Spend          *spendView            `json:"spend,omitempty"`
+	ModelSpend     map[string]*spendView `json:"modelSpend,omitempty"`
 }
 
 func (a *API) viewKey(pk *types.ProxyKey) keyView {
 	u := a.Stats.KeyUsage(pk.Namespace, pk.Name)
+	var models map[string]*spendView
+	for model, b := range pk.Spec.ModelBudgets {
+		if models == nil {
+			models = map[string]*spendView{}
+		}
+		models[model] = a.spendOf(budget.KeyModelScope(pk.Namespace, pk.Name, model), &b)
+	}
 	return keyView{Namespace: pk.Namespace, Name: pk.Name, Spec: pk.Spec, Ready: pk.Status.Ready, Message: pk.Status.Message,
 		SecretName: pk.Status.SecretName, Requests: u.Requests, RequestsWindow: "pod", LastUsed: u.LastUsed,
-		Spend: a.spendOf(budget.KeyScope(pk.Namespace, pk.Name), pk.Spec.Budget)}
+		Spend: a.spendOf(budget.KeyScope(pk.Namespace, pk.Name), pk.Spec.Budget), ModelSpend: models}
 }
 
 func (a *API) listKeys(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +76,7 @@ func (a *API) createKey(w http.ResponseWriter, r *http.Request) {
 		Name      string             `json:"name"`
 		Spec      types.ProxyKeySpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) || !validName(w, in.Namespace, "tenant") || !validName(w, in.Name, "key name") || !validBudget(w, in.Spec.Budget) {
+	if !readJSON(w, r, &in) || !validName(w, in.Namespace, "tenant") || !validName(w, in.Name, "key name") || !validKeySpec(w, in.Spec) {
 		return
 	}
 	pk := types.ProxyKey{
@@ -88,7 +96,7 @@ func (a *API) updateKey(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Spec types.ProxyKeySpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) || !validBudget(w, in.Spec.Budget) {
+	if !readJSON(w, r, &in) || !validKeySpec(w, in.Spec) {
 		return
 	}
 	ns, name := r.PathValue("ns"), r.PathValue("name")

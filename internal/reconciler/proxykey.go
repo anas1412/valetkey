@@ -6,6 +6,7 @@ import (
 	"github.com/anas1412/valetkey/internal/budget"
 	"log/slog"
 	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,13 +66,29 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		}
 	}
 
+	var expires time.Time
+	if pk.Spec.ExpiresAt != "" {
+		if expires, err = time.Parse(time.RFC3339, pk.Spec.ExpiresAt); err != nil {
+			return notReady("InvalidExpiry", "expiresAt must be an RFC 3339 time, e.g. 2026-12-31T23:59:59Z")
+		}
+		if !time.Now().Before(expires) {
+			return notReady("Expired", "key expired at "+expires.UTC().Format(time.RFC3339))
+		}
+		c.queue.AddAfter(id, time.Until(expires)+time.Second) // re-check right after it expires
+	}
 	limit, err := budget.Parse(pk.Spec.Budget)
 	if err != nil {
 		return notReady("InvalidBudget", err.Error())
 	}
-	if c.budgets != nil {
-		c.budgets.Restore(budget.KeyScope(ns, name), limit, pk.Status.Spend)
+	modelLimits := map[string]*budget.Limit{}
+	for model, b := range pk.Spec.ModelBudgets {
+		l, err := budget.Parse(&b)
+		if err != nil {
+			return notReady("InvalidBudget", fmt.Sprintf("budget for model %s: %v", model, err))
+		}
+		modelLimits[model] = l
 	}
+	c.observeKeySpend(pk, limit, modelLimits)
 
 	// Mint a virtual key unless the Secret already holds the one recorded in status.
 	secretName := SecretName(name)
@@ -84,7 +101,13 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	if secret != nil && secret.Data["VALETKEY_KEY"] != "" {
 		secretHash = keys.Hash(secret.Data["VALETKEY_KEY"])
 	}
-	if secretHash == "" || (keyHash != "" && secretHash != keyHash) {
+	needsKey := secretHash == "" || (keyHash != "" && secretHash != keyHash)
+	if needsKey && !c.leading() {
+		// The leader mints it; look again shortly.
+		c.queue.AddAfter(id, 3*time.Second)
+		return nil
+	}
+	if needsKey {
 		virtual := keys.Generate()
 		keyHash = keys.Hash(virtual)
 		if err := c.writeTenantSecret(ctx, pk, secretName, virtual, channels[0].Name(), group); err != nil {
@@ -103,7 +126,8 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	}
 	c.registry.UpsertRoute(uid, registry.Route{
 		KeyHash: keyHash, Group: group, Namespace: ns, ProxyKeyName: name,
-		Models: models, AllowList: allow, RPM: pk.Spec.RPM, TPM: pk.Spec.TPM, Budget: limit,
+		Models: models, AllowList: allow, RPM: pk.Spec.RPM, TPM: pk.Spec.TPM, Budget: limit, ModelBudgets: modelLimits,
+		MaxTokens: pk.Spec.MaxTokens, ExpiresAt: expires,
 	})
 	c.refreshKeyGauge()
 
@@ -128,9 +152,13 @@ func (c *Controller) writeTenantSecret(ctx context.Context, pk *types.ProxyKey, 
 		})
 }
 
-// setStatus patches only when something changed, so status writes don't loop through the informer.
+// leading reports whether this pod does the writes (one replica does).
+func (c *Controller) leading() bool { return c.IsLeader == nil || c.IsLeader() }
+
+// setStatus patches only when something changed, so status writes don't loop through
+// the informer. Only the leader writes.
 func (c *Controller) setStatus(ctx context.Context, pk *types.ProxyKey, next types.Status) error {
-	if !status.Changed(pk.Status, next) {
+	if !c.leading() || !status.Changed(pk.Status, next) {
 		return nil
 	}
 	return c.kube.PatchStatus(ctx, types.ProxyKeyGVR, pk.Namespace, pk.Name, next)
@@ -158,3 +186,32 @@ func (c *Controller) refreshKeyGauge() {
 }
 
 func everything() labels.Selector { return labels.Everything() }
+
+// observeKeySpend hands the spend saved in a key's status to the budget tracker.
+func (c *Controller) observeKeySpend(pk *types.ProxyKey, limit *budget.Limit, models map[string]*budget.Limit) {
+	if c.budgets == nil {
+		return
+	}
+	c.budgets.Observe(budget.KeyScope(pk.Namespace, pk.Name), limit, pk.Status.Spend)
+	for model, l := range models {
+		c.budgets.Observe(budget.KeyModelScope(pk.Namespace, pk.Name, model), l, pk.Status.ModelSpend[model])
+	}
+}
+
+// onSpendUpdate reads another replica's saved spend without reconciling.
+func (c *Controller) onSpendUpdate(obj any) {
+	if c.budgets == nil {
+		return
+	}
+	if pk, ok := types.FromUnstructured[types.ProxyKey](obj); ok && pk.Kind == "ProxyKey" {
+		models := map[string]*budget.Limit{}
+		for m, b := range pk.Spec.ModelBudgets {
+			models[m] = budget.ParseCached(&b)
+		}
+		c.observeKeySpend(pk, budget.ParseCached(pk.Spec.Budget), models)
+		return
+	}
+	if g, ok := types.FromUnstructured[types.TenantGroup](obj); ok && g.Kind == "Group" {
+		c.budgets.Observe(budget.TenantScope(g.Name), budget.ParseCached(g.Spec.Budget), g.Status.Spend)
+	}
+}

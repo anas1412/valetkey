@@ -24,6 +24,8 @@ Scrape `http://valetkey.valetkey-system:8081/metrics`, or enable the chart's `se
 | `valetkey_budget_spent_usd` | Gauge | scope (key, tenant), name |
 | `valetkey_budget_usd` | Gauge | scope, name |
 | `valetkey_budget_rejections_total` | Counter | group, scope |
+| `valetkey_pricing_fetched_timestamp_seconds` | Gauge | |
+| `valetkey_pricing_source_up` | Gauge | source |
 | `valetkey_channels_active` | Gauge | type |
 | `valetkey_proxykeys_active` | Gauge | group |
 
@@ -38,6 +40,25 @@ sum by (group) (increase(valetkey_tokens_total[1d]))
 # Error rate per provider
 sum by (channel) (rate(valetkey_requests_total{status_code=~"5.."}[5m]))
   / sum by (channel) (rate(valetkey_requests_total[5m]))
+```
+
+## Alerts
+
+With the Prometheus Operator, `prometheusRule.enabled: true` adds these alerts:
+
+| Alert | When |
+|---|---|
+| `ValetkeyBudgetAlmostUsed` | A key or tenant has used more than 80% of its budget |
+| `ValetkeyBudgetReached` | Requests were refused because a budget is used up |
+| `ValetkeyHighErrorRate` | More than 10% of requests fail with a 5xx for 10 minutes |
+| `ValetkeyProviderFailing` | A provider failed more than 20 times in 10 minutes |
+| `ValetkeyPricesStale` | Prices haven't been refreshed for a day |
+| `ValetkeyDown` | Prometheus can't scrape Valetkey |
+
+Without Prometheus, budgets still raise Kubernetes Events on the key or tenant (`BudgetAlmostUsed` at 80%, `BudgetReached` when used up):
+
+```bash
+kubectl get events -A --field-selector reason=BudgetReached
 ```
 
 ## Health

@@ -26,6 +26,8 @@ type Config struct {
 	// How often live prices are fetched; 0 turns fetching off (built-in prices and
 	// channel overrides only, for clusters without internet access).
 	PricingRefresh time.Duration
+	// Lease that picks the one replica that mints keys and writes status.
+	LeaseName string
 }
 
 func FromEnv() Config {
@@ -38,6 +40,7 @@ func FromEnv() Config {
 		PrometheusURL:     os.Getenv("PROMETHEUS_URL"),
 		TrustProxy:        os.Getenv("TRUST_PROXY"),
 		PricingRefresh:    duration("PRICING_REFRESH", 6*time.Hour),
+		LeaseName:         env("LEASE_NAME", "valetkey"),
 	}
 }
 

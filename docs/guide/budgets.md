@@ -28,7 +28,17 @@ spec:
   budget: { usd: "200", period: monthly }
 ```
 
-A request must fit both budgets. You can also set them in the dashboard, on the key and tenant forms.
+On single models of a key, on top of the key's own budget:
+
+```yaml
+kind: ProxyKey
+spec:
+  budget: { usd: "50", period: monthly }
+  modelBudgets:
+    claude-opus-4-5: { usd: "5", period: daily }
+```
+
+A request must fit every budget that applies. You can also set them in the dashboard, on the key and tenant forms.
 
 ## What happens at the limit
 
@@ -46,7 +56,12 @@ If that doesn't fit in what's left of the budget, the app gets **429** with erro
 When the answer arrives, the reservation is released and the **real cost** is charged. Spend never passes the budget, even with many requests at once. The last few cents of a budget can go unused, because the next request might cost more than what's left.
 
 ::: tip Set max_tokens
-Without `max_tokens`, Valetkey reserves the model's full output length, which can be large (Claude Sonnet: 64,000 tokens, about $0.96). Apps with a budget should send `max_tokens`.
+Without `max_tokens`, Valetkey reserves the model's full output length, which can be large (Claude Sonnet: 64,000 tokens, about $0.96). Apps with a budget should send `max_tokens`, or give the key a default that Valetkey adds to requests without one:
+
+```yaml
+spec:
+  maxTokens: 1024
+```
 :::
 
 Streamed OpenAI-style requests under a budget get `stream_options.include_usage` added, so the provider reports usage at the end of the stream. If a stream is cut off before that, Valetkey charges the reserved worst case and marks the request "estimated" in Activity, so spend is never under-counted.
@@ -122,6 +137,17 @@ A key or tenant with a budget can only use models with a known price, so the bud
 
 Spend is saved to the key's and tenant's status every 5 seconds and when Valetkey stops, and is loaded back when it starts. A crash (not a normal restart) can lose up to 5 seconds of spend.
 
+## Alerts
+
+At 80% and when a budget is used up, Valetkey records a Kubernetes Event on the key or tenant (`BudgetAlmostUsed`, `BudgetReached`) and an entry in the dashboard's Activity log, once per period:
+
+```bash
+kubectl describe pkey -n billing invoice-api
+kubectl get events -A --field-selector reason=BudgetReached
+```
+
+With the Prometheus Operator, `prometheusRule.enabled: true` in the Helm values adds alerts for the same, see [Monitoring](/guide/monitoring#alerts).
+
 ## Without internet access
 
 Set `pricing.refreshInterval: "off"` in the Helm values. Valetkey then uses the prices built into its image, plus your channel overrides. Otherwise it needs to reach `models.dev`, `openrouter.ai`, `api-docs.deepseek.com` and `raw.githubusercontent.com`.
@@ -130,4 +156,4 @@ Set `pricing.refreshInterval: "off"` in the Helm values. Valetkey then uses the 
 
 - The provider's invoice is what you actually pay. Valetkey's numbers follow the public list price. Credits, taxes, enterprise discounts and batch pricing are only known through your own channel prices.
 - Price catalogues can lag a provider's price change by a few hours.
-- Budgets are counted in the Valetkey pod's memory, like rate limits. Run one replica.
+- With [two replicas](/guide/limits#scaling), budgets are shared through status. Together the pods can go over a budget by what they spend in 5 seconds; with one replica, never.

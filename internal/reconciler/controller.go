@@ -35,6 +35,8 @@ type Controller struct {
 	metrics  *metrics.Metrics
 	stats    *stats.Stats
 	budgets  *budget.Tracker // optional
+	// IsLeader says whether this replica writes (mints keys, CRD status). Nil = always.
+	IsLeader func() bool
 
 	queue     workqueue.TypedRateLimitingInterface[string]
 	proxyKeys cache.GenericLister
@@ -75,10 +77,10 @@ func (c *Controller) Run(ctx context.Context) error {
 	proxyKeys := cluster.ForResource(types.ProxyKeyGVR)
 	c.proxyKeys = proxyKeys.Lister()
 
-	channels.Informer().AddEventHandler(handler(c.onChannel, c.onChannelDelete))
-	groups.Informer().AddEventHandler(handler(c.onGroup, c.onGroupDelete))
-	secrets.Informer().AddEventHandler(handler(c.onSecret, c.onSecret))
-	proxyKeys.Informer().AddEventHandler(handler(c.enqueue, c.onProxyKeyDelete))
+	channels.Informer().AddEventHandler(handler(c.onChannel, c.onChannelDelete, nil))
+	groups.Informer().AddEventHandler(handler(c.onGroup, c.onGroupDelete, c.onSpendUpdate))
+	secrets.Informer().AddEventHandler(handler(c.onSecret, c.onSecret, nil))
+	proxyKeys.Informer().AddEventHandler(handler(c.enqueue, c.onProxyKeyDelete, c.onSpendUpdate))
 
 	local.Start(ctx.Done()) // starts the informers added since the first Start
 	cluster.Start(ctx.Done())
@@ -94,6 +96,17 @@ func (c *Controller) Run(ctx context.Context) error {
 	<-ctx.Done()
 	c.queue.ShutDown()
 	return nil
+}
+
+// BecameLeader catches up on writes the previous leader may have left undone.
+func (c *Controller) BecameLeader() {
+	for _, e := range c.registry.Channels() {
+		c.resolveChannel(e.Channel)
+	}
+	for _, g := range c.registry.Groups() {
+		c.refreshGroupStatus(g)
+	}
+	c.RequeueAll()
 }
 
 // RequeueAll re-reconciles every ProxyKey (after a Group or Channel change).
@@ -163,12 +176,16 @@ func (c *Controller) worker(ctx context.Context) {
 }
 
 // handler builds informer callbacks; deletes may arrive as tombstones.
-func handler(onChange, onDelete func(any)) cache.ResourceEventHandlerFuncs {
+// onSpend gets updates that only changed status.spend (budget bookkeeping).
+func handler(onChange, onDelete, onSpend func(any)) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: onChange,
 		UpdateFunc: func(old, obj any) {
 			if spendOnly(old, obj) {
-				return // our own budget bookkeeping, nothing to reconcile
+				if onSpend != nil {
+					onSpend(obj)
+				}
+				return
 			}
 			onChange(obj)
 		},
@@ -190,10 +207,12 @@ func spendOnly(old, obj any) bool {
 	}
 	os, _, _ := unstructured.NestedMap(o.Object, "status")
 	ns, _, _ := unstructured.NestedMap(n.Object, "status")
-	if reflect.DeepEqual(os["spend"], ns["spend"]) {
+	if reflect.DeepEqual(os["spend"], ns["spend"]) && reflect.DeepEqual(os["modelSpend"], ns["modelSpend"]) {
 		return false
 	}
 	delete(os, "spend")
 	delete(ns, "spend")
+	delete(os, "modelSpend")
+	delete(ns, "modelSpend")
 	return reflect.DeepEqual(os, ns) && reflect.DeepEqual(o.Object["spec"], n.Object["spec"])
 }

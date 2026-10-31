@@ -55,6 +55,17 @@ From the **Copy key** menu on each row:
 - **Edit**: change models, IP ranges or limits.
 - **Delete**: removes the key and its Secret (also confirmed by dragging).
 
+## Temporary keys
+
+Give a key an end date, for a contractor or a demo. It stops working at that moment (401) and shows **Expired**:
+
+```yaml
+spec:
+  expiresAt: "2026-12-31T23:59:59Z"
+```
+
+In the dashboard, set **Expires** on the key form (in your browser's time zone).
+
 ## Use the Secret in your workloads
 
 The Secret holds everything an app needs:

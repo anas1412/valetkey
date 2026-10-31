@@ -44,7 +44,7 @@ func (c *Controller) resolveChannel(ch *types.Channel) {
 		reason, msg = "SecretUnavailable", problem
 	}
 	next := status.Ready(ch.Status, problem == "", reason, msg, ch.Generation)
-	if status.Changed(ch.Status, next) {
+	if status.Changed(ch.Status, next) && c.leading() {
 		if err := c.kube.PatchStatus(context.Background(), types.ChannelGVR, c.cfg.OperatorNamespace, ch.Name, next); err != nil {
 			slog.Warn("channel status patch failed", "channel", ch.Name, "err", err)
 		}
@@ -114,7 +114,7 @@ func (c *Controller) onGroup(obj any) {
 	c.registry.UpsertGroup(g)
 	if c.budgets != nil {
 		if limit, err := budget.Parse(g.Spec.Budget); err == nil {
-			c.budgets.Restore(budget.TenantScope(g.Name), limit, g.Status.Spend)
+			c.budgets.Observe(budget.TenantScope(g.Name), limit, g.Status.Spend)
 		}
 	}
 	c.refreshGroupStatus(g)
@@ -151,7 +151,7 @@ func (c *Controller) refreshGroupStatus(g *types.TenantGroup) {
 		msg += "; unknown channels: " + strings.Join(missing, ", ")
 	}
 	next := status.Ready(g.Status, g.Enabled() && usable > 0 && budgetErr == nil, reason, msg, g.Generation)
-	if !status.Changed(g.Status, next) {
+	if !c.leading() || !status.Changed(g.Status, next) {
 		return
 	}
 	if err := c.kube.PatchStatus(context.Background(), types.GroupGVR, c.cfg.OperatorNamespace, g.Name, next); err != nil {

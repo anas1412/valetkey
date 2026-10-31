@@ -9,9 +9,14 @@ import (
 type API int
 
 const (
-	OpenAI API = iota
-	Anthropic
+	OpenAI     API = iota // /v1/chat/completions
+	Anthropic             // /v1/messages
+	Embeddings            // /v1/embeddings (OpenAI format)
+	Responses             // /v1/responses (OpenAI format)
 )
+
+// openAIPath is the upstream path for the OpenAI-format APIs.
+var openAIPath = map[API]string{OpenAI: "/v1/chat/completions", Embeddings: "/v1/embeddings", Responses: "/v1/responses"}
 
 // writeError sends an error body in the client's API shape.
 func writeError(w http.ResponseWriter, api API, status int, kind, message string) {

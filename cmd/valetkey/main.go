@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/anas1412/valetkey/internal/budget"
 	"github.com/anas1412/valetkey/internal/config"
 	"github.com/anas1412/valetkey/internal/kube"
+	"github.com/anas1412/valetkey/internal/leader"
 	"github.com/anas1412/valetkey/internal/metrics"
 	"github.com/anas1412/valetkey/internal/pricing"
 	"github.com/anas1412/valetkey/internal/promql"
@@ -55,11 +57,25 @@ func run() error {
 		return err
 	}
 	reg, m, st := registry.New(), metrics.New(), stats.New()
-	budgets := budget.NewTracker()
+	pod, _ := os.Hostname() // the pod name: each replica saves its own share of spend
+	budgets := budget.NewTracker(pod)
 	prices := &pricing.Store{Interval: cfg.PricingRefresh,
-		Persist: kube.ConfigMapStore{Client: kc, Namespace: cfg.OperatorNamespace, Name: "valetkey-pricing", Key: "catalog.json.gz"}}
+		Persist: kube.ConfigMapStore{Client: kc, Namespace: cfg.OperatorNamespace, Name: "valetkey-pricing", Key: "catalog.json.gz"},
+		OnChange: func(c *pricing.Catalog) {
+			m.PricesFetched.Set(float64(c.FetchedAt.Unix()))
+			for _, s := range c.Sources {
+				up := 0.0
+				if s.OK {
+					up = 1
+				}
+				m.PriceSourceUp.WithLabelValues(s.Name).Set(up)
+			}
+		}}
 	prices.Start(ctx)
 	ctrl := reconciler.New(cfg, kc, reg, m, st, budgets)
+	elector := &leader.Elector{Client: kc.Dynamic, Namespace: cfg.OperatorNamespace, Name: cfg.LeaseName,
+		Identity: pod, Duration: 15 * time.Second, Renew: 2 * time.Second}
+	ctrl.IsLeader = elector.Leading
 	rl := &relay.Relay{Registry: reg, Limiter: relay.NewRateLimiter(), Metrics: m, Stats: st, Transports: relay.NewTransports(),
 		Prices: prices, Budgets: budgets}
 	api := &admin.API{Config: cfg, Kube: kc, Registry: reg, Controller: ctrl, Stats: st, Prices: prices, Budgets: budgets}
@@ -83,6 +99,8 @@ func run() error {
 		}()
 	}
 	go func() { errc <- ctrl.Run(ctx) }()
+	go elector.Run(ctx, ctrl.BecameLeader)
+	go reportBudgetAlerts(ctx, budgets, kc, ctrl, reg, st, cfg.OperatorNamespace)
 	// Spend saving outlives the request drain, so the last requests are saved too.
 	saveCtx, stopSaving := context.WithCancel(context.Background())
 	defer stopSaving()
@@ -93,7 +111,7 @@ func run() error {
 			if s.Kind == "tenant" {
 				gvr, ns = types.GroupGVR, cfg.OperatorNamespace
 			}
-			err := kc.PatchSpend(ctx, gvr, ns, s.Name, sp)
+			err := kc.PatchSpend(ctx, gvr, ns, s.Name, s.Model, sp)
 			if apierrors.IsNotFound(err) {
 				budgets.Forget(s)
 				return nil
@@ -119,4 +137,38 @@ func run() error {
 	stopSaving()
 	<-saved // last spend written to status
 	return nil
+}
+
+// reportBudgetAlerts turns budget alerts into Kubernetes Events, log lines and
+// dashboard Activity entries.
+func reportBudgetAlerts(ctx context.Context, b *budget.Tracker, kc *kube.Client, ctrl *reconciler.Controller,
+	reg *registry.Registry, st *stats.Stats, operatorNS string) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case a := <-b.Alerts():
+			reason, what := "BudgetAlmostUsed", "is 80% used"
+			if a.Level == budget.Reached {
+				reason, what = "BudgetReached", "is used up; requests are refused"
+			}
+			msg := fmt.Sprintf("%s budget of %s for %s %s (spent %s); resets %s", a.Limit.Period, a.Limit.Amount, a.Scope,
+				what, a.Spent, a.Resets.UTC().Format("2006-01-02 15:04 UTC"))
+			slog.Warn("budget", "reason", reason, "scope", a.Scope.String(), "spent", a.Spent.String())
+			st.Event("warn", "budget", msg)
+
+			ref := kube.ObjectRef{Kind: "ProxyKey", Namespace: a.Scope.Namespace, Name: a.Scope.Name}
+			if a.Scope.Kind == "tenant" {
+				ref = kube.ObjectRef{Kind: "Group", Namespace: operatorNS, Name: a.Scope.Name}
+				if g, ok := reg.Group(a.Scope.Name); ok {
+					ref.UID = string(g.UID)
+				}
+			} else if pk, ok := ctrl.ProxyKey(a.Scope.Namespace, a.Scope.Name); ok {
+				ref.UID = string(pk.UID)
+			}
+			if err := kc.Warn(ctx, ref, reason, msg); err != nil {
+				slog.Warn("could not record budget event", "err", err)
+			}
+		}
+	}
 }

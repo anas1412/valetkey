@@ -24,6 +24,10 @@ helm show crds oci://ghcr.io/anas1412/charts/valetkey --version <new> | kubectl 
 | `service.proxyPort` | `8000` | |
 | `service.metricsPort` | `8081` | |
 | `resources` | 20m / 32Mi requests, 256Mi limit | |
+| `replicas` | `1` | Pods serving requests; see [Scaling](/guide/limits#scaling) |
+| `prometheusRule.enabled` | `false` | Create a Prometheus Operator `PrometheusRule` with Valetkey's alerts |
+| `prometheusRule.labels` | `{}` | Extra labels, e.g. for your Prometheus rule selector |
+| `prometheusRule.providerErrors` | `20` | Failed upstream attempts per provider in 10 minutes before alerting |
 | `pricing.refreshInterval` | `6h` | How often live prices are fetched; `"off"` uses the built-in prices only. See [Budgets & costs](/guide/budgets) |
 | `prometheus.url` | `""` | Prometheus that scrapes Valetkey. The dashboard then reads usage (24 h, 7 d, 30 d) from it, see [Usage history](/guide/usage-history) |
 | `grafanaDashboard.enabled` | `false` | Create a ConfigMap with the Grafana dashboard for Grafana's sidecar |
@@ -37,7 +41,7 @@ helm show crds oci://ghcr.io/anas1412/charts/valetkey --version <new> | kubectl 
 | `serviceMonitor.labels` | `{}` | Extra labels, e.g. for your Prometheus selector |
 | `podAnnotations`, `nodeSelector`, `tolerations`, `affinity` | empty | Standard pod settings |
 
-The release runs one replica on purpose: see [Limits](/guide/limits#scaling).
+See [Scaling](/guide/limits#scaling) for running more than one replica.
 
 ## Upgrading
 

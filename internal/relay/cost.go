@@ -15,6 +15,10 @@ import (
 // nor the price catalogue says how long the answer can be.
 const defaultMaxOutput = 131_072
 
+// anthropicDefaultMaxTokens is the cap sent when an OpenAI client without max_tokens
+// is translated for an Anthropic channel (Anthropic requires one).
+const anthropicDefaultMaxTokens = 4096
+
 // costing prices one request and holds its budget reservation.
 type costing struct {
 	rl                      *Relay
@@ -22,6 +26,7 @@ type costing struct {
 	route                   registry.Route
 	res                     *budget.Reservation
 	budgeted                bool
+	api                     API
 	inputBound, outputLimit int // outputLimit 0 = take the model's max output
 }
 
@@ -47,7 +52,11 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 		tenantLimit = budget.ParseCached(g.Spec.Budget)
 	}
 	items = append(items, budget.Item{Scope: budget.TenantScope(route.Group), Limit: tenantLimit})
-	budgeted := route.Budget != nil || tenantLimit != nil
+	modelLimit := route.ModelBudgets[model]
+	if modelLimit != nil {
+		items = append(items, budget.Item{Scope: budget.KeyModelScope(route.Namespace, route.ProxyKeyName, model), Limit: modelLimit})
+	}
+	budgeted := route.Budget != nil || tenantLimit != nil || modelLimit != nil
 	if budgeted && api == OpenAI && body["stream"] == true {
 		// OpenAI-style streams only report usage when asked; without it the request
 		// would be charged its worst case.
@@ -61,7 +70,10 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 
 	// Every token is at least one byte, so the body size bounds the input; the
 	// margin covers the few tokens a chat template adds.
-	c := &costing{rl: rl, start: start, route: route, budgeted: budgeted, inputBound: bodySize + 256, outputLimit: requestedMaxTokens(body)}
+	c := &costing{rl: rl, start: start, route: route, budgeted: budgeted, api: api, inputBound: bodySize + 256, outputLimit: requestedMaxTokens(body)}
+	if c.outputLimit == 0 {
+		c.outputLimit = route.MaxTokens
+	}
 	cal := rl.Prices.Catalog().Calendars
 	var worst pricing.USD
 	priced := candidates[:0:0]
@@ -74,7 +86,7 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 			continue
 		}
 		priced = append(priced, e)
-		worst = max(worst, p.Worst(start, c.inputBound, c.outputBound(p), cal))
+		worst = max(worst, p.Worst(start, c.inputBound, c.outputBound(e, p), cal))
 	}
 	if len(priced) == 0 {
 		return nil, nil, &relayError{status: http.StatusForbidden, kind: "model_not_priced",
@@ -92,10 +104,15 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 	return c, priced, nil
 }
 
-func (c *costing) outputBound(p pricing.Price) int {
+// outputBound is the most output tokens the request can produce on channel e.
+func (c *costing) outputBound(e registry.ChannelEntry, p pricing.Price) int {
 	switch {
+	case c.api == Embeddings:
+		return 0
 	case c.outputLimit > 0:
 		return c.outputLimit
+	case c.api == OpenAI && e.Channel.Spec.Type == "anthropic":
+		return anthropicDefaultMaxTokens // the translation sends this cap
 	case p.MaxOutput > 0:
 		return p.MaxOutput
 	default:
@@ -120,13 +137,13 @@ func (c *costing) settle(e registry.ChannelEntry, model string, status int, u *U
 		// Providers don't bill failed requests.
 	case u.InputTotal() == 0 && u.Output == 0 && c.budgeted:
 		// No usage reported (stream cut off): charge the worst case, never less.
-		cost, note = p.Worst(c.start, c.inputBound, c.outputBound(p), cal), "estimated"
+		cost, note = p.Worst(c.start, c.inputBound, c.outputBound(e, p), cal), "estimated"
 	case u.InputTotal() == 0 && u.Output == 0:
 		note = "no usage"
 	default:
 		r, _ := p.At(c.start, u.InputTotal(), cal)
 		cost = r.Cost(pricing.Tokens{Input: u.Input, CacheRead: u.CacheRead, CacheWrite5m: u.CacheWrite5m,
-			CacheWrite1h: u.CacheWrite1h, Output: u.Output, Reasoning: u.Reasoning})
+			CacheWrite1h: u.CacheWrite1h, Output: u.Output, Reasoning: u.Reasoning, AudioInput: u.AudioInput, AudioOutput: u.AudioOutput})
 	}
 	c.res.Commit(cost, note == "unpriced")
 	c.report()

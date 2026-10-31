@@ -55,6 +55,8 @@ type result struct {
 
 func (rl *Relay) ChatCompletions(w http.ResponseWriter, r *http.Request) { rl.handle(w, r, OpenAI) }
 func (rl *Relay) Messages(w http.ResponseWriter, r *http.Request)        { rl.handle(w, r, Anthropic) }
+func (rl *Relay) Embeddings(w http.ResponseWriter, r *http.Request)      { rl.handle(w, r, Embeddings) }
+func (rl *Relay) Responses(w http.ResponseWriter, r *http.Request)       { rl.handle(w, r, Responses) }
 
 func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 	start := time.Now()
@@ -128,7 +130,7 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 	lastStatus, lastType := http.StatusBadGateway, "upstream_error"
 	for attempt, entry := range candidates {
 		last := attempt == len(candidates)-1
-		a, err := adapt(entry, api, body, r.Header)
+		a, err := adapt(entry, api, body, r.Header, route.MaxTokens)
 		if err != nil {
 			var re *relayError
 			if errors.As(err, &re) {

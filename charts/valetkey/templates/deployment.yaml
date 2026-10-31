@@ -4,8 +4,7 @@ metadata:
   name: {{ include "valetkey.fullname" . }}
   labels: {{- include "valetkey.labels" . | nindent 4 }}
 spec:
-  # Keep at 1: the reconciler has no leader election, and rate limits / dashboard history are in memory.
-  replicas: 1
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels: {{- include "valetkey.selectorLabels" . | nindent 6 }}
   template:
@@ -31,6 +30,8 @@ spec:
                 fieldRef: { fieldPath: metadata.namespace }
             - name: PROXY_URL
               value: {{ .Values.proxyURL | default (printf "http://%s.%s.svc.cluster.local:%v" (include "valetkey.fullname" .) .Release.Namespace .Values.service.proxyPort) | quote }}
+            - name: LEASE_NAME
+              value: {{ include "valetkey.fullname" . | quote }}
             - name: PRICING_REFRESH
               value: {{ .Values.pricing.refreshInterval | quote }}
             {{- with .Values.prometheus.url }}

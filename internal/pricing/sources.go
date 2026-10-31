@@ -94,11 +94,13 @@ type modelsDev map[string]struct {
 }
 
 type mdRates struct {
-	Input      float64  `json:"input"`
-	Output     float64  `json:"output"`
-	CacheRead  *float64 `json:"cache_read"`
-	CacheWrite *float64 `json:"cache_write"`
-	Reasoning  *float64 `json:"reasoning"`
+	Input       float64  `json:"input"`
+	Output      float64  `json:"output"`
+	CacheRead   *float64 `json:"cache_read"`
+	CacheWrite  *float64 `json:"cache_write"`
+	Reasoning   *float64 `json:"reasoning"`
+	InputAudio  *float64 `json:"input_audio"`
+	OutputAudio *float64 `json:"output_audio"`
 }
 
 type mdCost struct {
@@ -178,6 +180,12 @@ func (r mdRates) rates(provider string) Rates {
 	}
 	if r.Reasoning != nil {
 		out.Reasoning = PerMillion(*r.Reasoning)
+	}
+	if r.InputAudio != nil {
+		out.InputAudio = PerMillion(*r.InputAudio)
+	}
+	if r.OutputAudio != nil {
+		out.OutputAudio = PerMillion(*r.OutputAudio)
 	}
 	return out
 }
@@ -373,7 +381,8 @@ func describe(s schedule) string {
 func scale(r Rates, f int64) Rates {
 	m := USD(f)
 	return Rates{Input: r.Input * m, Output: r.Output * m, CacheRead: r.CacheRead * m,
-		CacheWrite5m: r.CacheWrite5m * m, CacheWrite1h: r.CacheWrite1h * m, Reasoning: r.Reasoning * m}
+		CacheWrite5m: r.CacheWrite5m * m, CacheWrite1h: r.CacheWrite1h * m, Reasoning: r.Reasoning * m,
+		InputAudio: r.InputAudio * m, OutputAudio: r.OutputAudio * m}
 }
 
 // --- Chinese public holidays (State Council schedule, full ranges) ---

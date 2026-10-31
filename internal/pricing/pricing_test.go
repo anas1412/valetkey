@@ -152,6 +152,16 @@ func TestCostWithCacheTiersAndReasoning(t *testing.T) {
 	}
 }
 
+func TestAudioTokens(t *testing.T) {
+	// $2.50 text / $40 audio in, $10 text / $80 audio out, per million
+	r := Rates{Input: PerMillion(2.5), Output: PerMillion(10), InputAudio: PerMillion(40), OutputAudio: PerMillion(80)}
+	got := r.Cost(Tokens{Input: 1000, AudioInput: 600, Output: 500, AudioOutput: 300})
+	// 400×2.5 + 600×40 + 200×10 + 300×80 = 1000 + 24000 + 2000 + 24000 = 51000 per million
+	if got != usd(t, "0.051") {
+		t.Fatalf("audio cost %s", got)
+	}
+}
+
 func TestOverrideWins(t *testing.T) {
 	s := &Store{}
 	s.set(fixtureCatalog(t, fixtureDeepSeek))

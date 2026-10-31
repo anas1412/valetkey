@@ -19,6 +19,7 @@ var (
 	ProxyKeyGVR  = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "proxykeys"}
 	SecretGVR    = schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
 	ConfigMapGVR = schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
+	EventGVR     = schema.GroupVersionResource{Version: "v1", Resource: "events"}
 	NamespaceGVR = schema.GroupVersionResource{Version: "v1", Resource: "namespaces"}
 )
 
@@ -44,17 +45,30 @@ type Status struct {
 	Message    string      `json:"message,omitempty"`
 	KeyHash    string      `json:"keyHash,omitempty"`
 	SecretName string      `json:"secretName,omitempty"`
-	// Spend is the current budget period's spend (ProxyKey and Group with a budget).
+	// Spend is the current period's spend (ProxyKey and Group).
 	Spend *Spend `json:"spend,omitempty"`
+	// ModelSpend is the spend per model with a budget in spec.modelBudgets (ProxyKey).
+	ModelSpend map[string]*Spend `json:"modelSpend,omitempty"`
 }
 
-// Spend is persisted in status so budgets survive restarts. USD is an exact decimal.
+// Spend is kept in status so budgets survive restarts and are shared between
+// replicas: each pod writes its own share under Pods, and USD is the total.
+// Amounts are exact decimals.
 type Spend struct {
+	PeriodStart string               `json:"periodStart"`
+	USD         string               `json:"usd"`
+	Requests    int64                `json:"requests"`
+	Unpriced    int64                `json:"unpriced,omitempty"`
+	UpdatedAt   string               `json:"updatedAt"`
+	Pods        map[string]*PodSpend `json:"pods,omitempty"` // nil entry = remove (merge patch)
+}
+
+// PodSpend is one replica's share of a period's spend.
+type PodSpend struct {
 	PeriodStart string `json:"periodStart"`
 	USD         string `json:"usd"`
 	Requests    int64  `json:"requests"`
 	Unpriced    int64  `json:"unpriced,omitempty"`
-	UpdatedAt   string `json:"updatedAt"`
 }
 
 // Budget caps spend per period. USD is a decimal string ("20", "0.50").
@@ -150,6 +164,12 @@ type ProxyKeySpec struct {
 	RPM     int      `json:"rpm,omitempty"`
 	TPM     int      `json:"tpm,omitempty"`
 	Budget  *Budget  `json:"budget,omitempty"`
+	// MaxTokens is the output cap added to requests that don't set one.
+	MaxTokens int `json:"maxTokens,omitempty"`
+	// ExpiresAt (RFC 3339) is when the key stops working.
+	ExpiresAt string `json:"expiresAt,omitempty"`
+	// ModelBudgets caps spend on single models, e.g. {"claude-opus-4-5": {usd: "5"}}.
+	ModelBudgets map[string]Budget `json:"modelBudgets,omitempty"`
 }
 
 type ProxyKey struct {

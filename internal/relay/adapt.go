@@ -3,8 +3,10 @@ package relay
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 const anthropicVersion = "2023-06-01"
@@ -28,13 +30,18 @@ type adaptation struct {
 	newStream     func() StreamTranslator
 }
 
-// adapt builds the upstream request: model mapping, auth, and translation when an
-// OpenAI client hits an Anthropic channel.
-func adapt(e registry.ChannelEntry, api API, body map[string]any, in http.Header) (*adaptation, error) {
+// adapt builds the upstream request: model mapping, auth, the key's default output
+// cap, and translation when an OpenAI client hits an Anthropic channel.
+func adapt(e registry.ChannelEntry, api API, body map[string]any, in http.Header, defaultMaxTokens int) (*adaptation, error) {
 	spec := e.Channel.Spec
 	out := make(map[string]any, len(body))
 	for k, v := range body {
 		out[k] = v
+	}
+	if defaultMaxTokens > 0 && requestedMaxTokens(body) == 0 {
+		if field := maxTokensField(api, spec); field != "" {
+			out[field] = defaultMaxTokens
+		}
 	}
 	if model, _ := body["model"].(string); spec.ModelMapping[model] != "" {
 		out["model"] = spec.ModelMapping[model]
@@ -67,10 +74,27 @@ func adapt(e registry.ChannelEntry, api API, body map[string]any, in http.Header
 		}
 	} else {
 		h.Set("Authorization", "Bearer "+e.UpstreamKey)
-		if a.url, err = JoinURL(spec.BaseURL, "/v1/chat/completions"); err != nil {
+		if a.url, err = JoinURL(spec.BaseURL, openAIPath[api]); err != nil {
 			return nil, err
 		}
 	}
 	a.body, err = json.Marshal(out)
 	return a, err
+}
+
+// maxTokensField is the output cap parameter the upstream understands. OpenAI's own
+// API rejects max_tokens on newer models; compatible servers mostly only know it.
+func maxTokensField(api API, spec types.ChannelSpec) string {
+	switch {
+	case api == Embeddings:
+		return ""
+	case api == Responses:
+		return "max_output_tokens"
+	case api == Anthropic || spec.Type == "anthropic":
+		return "max_tokens"
+	case strings.Contains(spec.BaseURL, "api.openai.com") || strings.Contains(spec.BaseURL, ".openai.azure.com"):
+		return "max_completion_tokens"
+	default:
+		return "max_tokens"
+	}
 }

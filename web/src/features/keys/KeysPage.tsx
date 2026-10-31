@@ -11,7 +11,7 @@ import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/utils'
 import { useToast } from '@/lib/toast'
-import { formatCount, timeAgo } from '@/lib/format'
+import { formatCount, timeAgo, timeUntil } from '@/lib/format'
 import type { ProxyKey } from '@/lib/types'
 import { KeySheet } from './KeySheet'
 import { KeyDetails } from './KeyDetails'
@@ -75,7 +75,10 @@ export function KeysPage() {
     {
       id: 'limits', header: 'Limits', priority: 'low',
       accessorFn: (k) => [k.spec.models?.length ? `${k.spec.models.length} model(s)` : '', k.spec.subnets?.length ? 'IP list' : '',
-        k.spec.rpm ? `${k.spec.rpm} rpm` : '', k.spec.tpm ? `${formatCount(k.spec.tpm)} tpm` : ''].filter(Boolean).join(', ') || 'none',
+        k.spec.rpm ? `${k.spec.rpm} rpm` : '', k.spec.tpm ? `${formatCount(k.spec.tpm)} tpm` : '',
+        k.spec.maxTokens ? `max ${formatCount(k.spec.maxTokens)} tokens` : '',
+        k.spec.modelBudgets ? `${Object.keys(k.spec.modelBudgets).length} model budget(s)` : '',
+        k.spec.expiresAt ? (Date.parse(k.spec.expiresAt) > Date.now() ? `expires ${timeUntil(k.spec.expiresAt)}` : 'expired') : ''].filter(Boolean).join(', ') || 'none',
       cell: ({ value }) => <span className="text-text-secondary">{value}</span>,
     },
     { id: 'requests', header: keys.data?.[0]?.requestsWindow === '30d' ? 'Requests (30d)' : 'Requests', accessorKey: 'requests', sortable: true, align: 'right', priority: 'medium',

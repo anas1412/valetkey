@@ -5,6 +5,7 @@ package registry
 import (
 	"github.com/anas1412/valetkey/internal/budget"
 	"sync"
+	"time"
 
 	"github.com/anas1412/valetkey/internal/keys"
 	"github.com/anas1412/valetkey/internal/types"
@@ -20,6 +21,9 @@ type Route struct {
 	AllowList    keys.AllowList
 	RPM, TPM     int
 	Budget       *budget.Limit // nil = no budget
+	ModelBudgets map[string]*budget.Limit
+	MaxTokens    int       // default output cap, 0 = none
+	ExpiresAt    time.Time // zero = never
 }
 
 // ChannelEntry is a Channel plus its resolved upstream key ("" = unresolved).

@@ -4,6 +4,11 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
+# Pods serving requests. With 2 or more, one of them (picked with a Lease) mints keys
+# and writes status, budgets are shared through CRD status, and a PodDisruptionBudget
+# keeps one running during node drains. Rate limits stay per pod.
+replicas: 1
+
 # URL written into tenant key Secrets and shown in the dashboard's examples.
 # Defaults to http://<release>.<namespace>.svc.cluster.local:8000
 proxyURL: ""
@@ -46,6 +51,14 @@ serviceMonitor:
   enabled: false
   interval: 30s
   labels: {}
+
+# Prometheus Operator alert rules: budgets almost used or used up, error rate,
+# failing providers, stale prices, Valetkey down.
+prometheusRule:
+  enabled: false
+  labels: {}
+  # Failed upstream attempts per provider in 10 minutes before alerting.
+  providerErrors: 20
 
 # Grafana dashboard as a ConfigMap for Grafana's dashboard sidecar.
 grafanaDashboard:

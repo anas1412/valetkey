@@ -119,12 +119,15 @@ func (c *Client) DeleteSecret(ctx context.Context, ns, name string) error {
 // PatchStatus merge-patches the status subresource of a CRD object. Spend is left
 // alone: only PatchSpend writes it, so a stale copy never overwrites newer spend.
 func (c *Client) PatchStatus(ctx context.Context, gvr schema.GroupVersionResource, ns, name string, status types.Status) error {
-	status.Spend = nil
+	status.Spend, status.ModelSpend = nil, nil
 	return c.patchStatus(ctx, gvr, ns, name, status)
 }
 
-// PatchSpend writes only status.spend.
-func (c *Client) PatchSpend(ctx context.Context, gvr schema.GroupVersionResource, ns, name string, spend types.Spend) error {
+// PatchSpend writes only status.spend, or status.modelSpend[model] when model is set.
+func (c *Client) PatchSpend(ctx context.Context, gvr schema.GroupVersionResource, ns, name, model string, spend types.Spend) error {
+	if model != "" {
+		return c.patchStatus(ctx, gvr, ns, name, map[string]any{"modelSpend": map[string]any{model: spend}})
+	}
 	return c.patchStatus(ctx, gvr, ns, name, map[string]any{"spend": spend})
 }
 
@@ -236,5 +239,27 @@ func (s ConfigMapStore) Save(ctx context.Context, data []byte) error {
 	}
 	obj.SetResourceVersion(existing.GetResourceVersion())
 	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
+	return err
+}
+
+// ObjectRef names the object an Event is about.
+type ObjectRef struct {
+	Kind, Namespace, Name, UID string
+}
+
+// Warn records a Warning Event on a Valetkey object (shown by kubectl describe and
+// kubectl get events).
+func (c *Client) Warn(ctx context.Context, obj ObjectRef, reason, message string) error {
+	now := metav1.Now().UTC().Format("2006-01-02T15:04:05Z")
+	ev := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "Event",
+		"metadata": map[string]any{"generateName": obj.Name + ".", "namespace": obj.Namespace},
+		"involvedObject": map[string]any{"apiVersion": types.Group + "/" + types.Version, "kind": obj.Kind,
+			"namespace": obj.Namespace, "name": obj.Name, "uid": obj.UID},
+		"reason": reason, "message": message, "type": "Warning", "count": int64(1),
+		"source":         map[string]any{"component": ManagedBy},
+		"firstTimestamp": now, "lastTimestamp": now,
+	}}
+	_, err := c.Dynamic.Resource(types.EventGVR).Namespace(obj.Namespace).Create(ctx, ev, metav1.CreateOptions{})
 	return err
 }

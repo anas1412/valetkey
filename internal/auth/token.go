@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/anas1412/valetkey/internal/keys"
 	"github.com/anas1412/valetkey/internal/registry"
@@ -44,6 +45,10 @@ func TokenAuth(reg *registry.Registry, trustProxy string, next http.Handler) htt
 		route, ok := reg.Lookup(keys.Hash(key))
 		if !ok {
 			unauthorized(w, r, "invalid API key")
+			return
+		}
+		if !route.ExpiresAt.IsZero() && !time.Now().Before(route.ExpiresAt) {
+			unauthorized(w, r, "this API key has expired")
 			return
 		}
 		if len(route.AllowList) > 0 && !route.AllowList.Allows(ClientIP(r, hops)) {

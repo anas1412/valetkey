@@ -22,6 +22,8 @@ func Proxy(rl *relay.Relay, reg *registry.Registry, trustProxy string) http.Hand
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/chat/completions", rl.ChatCompletions)
 	mux.HandleFunc("POST /v1/messages", rl.Messages)
+	mux.HandleFunc("POST /v1/embeddings", rl.Embeddings)
+	mux.HandleFunc("POST /v1/responses", rl.Responses)
 	mux.HandleFunc("GET /v1/models", rl.Models)
 	return withNotFound(auth.TokenAuth(reg, trustProxy, mux), func(r *http.Request) bool {
 		return strings.HasPrefix(r.URL.Path, "/v1/")

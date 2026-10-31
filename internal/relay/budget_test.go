@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,7 @@ func TestBudgetStopsBeforeOverspending(t *testing.T) {
 	reg.UpsertGroup(&types.TenantGroup{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.GroupSpec{ChannelRefs: []string{"ok"}}})
 
 	limit, _ := budget.Parse(&types.Budget{USD: "0.004", Period: "daily"})
-	tracker, st := budget.NewTracker(), stats.New()
+	tracker, st := budget.NewTracker("test"), stats.New()
 	rl := &Relay{Registry: reg, Limiter: NewRateLimiter(), Metrics: metrics.New(), Stats: st, Transports: NewTransports(),
 		Prices: &pricing.Store{}, Budgets: tracker}
 	route := registry.Route{Group: "team", Namespace: "team", ProxyKeyName: "app", Budget: limit}
@@ -72,7 +73,17 @@ func TestBudgetStopsBeforeOverspending(t *testing.T) {
 		t.Fatalf("activity: %+v", e[:min(2, len(e))])
 	}
 
-	resp, out := f.post(t, "/v1/chat/completions", map[string]any{"model": "unpriced"}, nil)
+	// A budget on one model of the key.
+	tiny, _ := budget.Parse(&types.Budget{USD: "0.0001", Period: "daily"})
+	route.Budget, route.ModelBudgets = nil, map[string]*budget.Limit{"priced": tiny}
+	resp, out := f.post(t, "/v1/chat/completions", map[string]any{"model": "priced", "max_tokens": 10}, nil)
+	if msg, _ := out["error"].(map[string]any)["message"].(string); resp.StatusCode != 429 || !strings.Contains(msg, "model priced on key team/app") {
+		t.Fatalf("model budget: %d %v", resp.StatusCode, out)
+	}
+	route.ModelBudgets = nil
+	route.Budget = limit
+
+	resp, out = f.post(t, "/v1/chat/completions", map[string]any{"model": "unpriced"}, nil)
 	if resp.StatusCode != http.StatusForbidden || out["error"].(map[string]any)["type"] != "model_not_priced" {
 		t.Fatalf("unpriced model with a budget: %d %v", resp.StatusCode, out)
 	}

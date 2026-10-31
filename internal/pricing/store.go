@@ -30,8 +30,9 @@ type Persister interface {
 // Store serves the current catalogue and refreshes it in the background.
 type Store struct {
 	Fetcher  Fetcher
-	Interval time.Duration // 0 = never fetch: snapshot (or saved copy) plus overrides only
-	Persist  Persister     // optional
+	Interval time.Duration  // 0 = never fetch: snapshot (or saved copy) plus overrides only
+	Persist  Persister      // optional
+	OnChange func(*Catalog) // optional, called with every new catalogue
 
 	mu  sync.RWMutex
 	cat *Catalog
@@ -94,6 +95,9 @@ func (s *Store) set(c *Catalog) {
 	s.mu.Lock()
 	s.cat = c
 	s.mu.Unlock()
+	if s.OnChange != nil {
+		s.OnChange(c)
+	}
 }
 
 // Catalog is the current catalogue (never nil after Start).

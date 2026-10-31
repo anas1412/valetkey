@@ -161,6 +161,10 @@ spec:
         - name: Budget
           type: string
           jsonPath: .spec.budget.usd
+        - name: Expires
+          type: string
+          jsonPath: .spec.expiresAt
+          priority: 1
         - name: Message
           type: string
           jsonPath: .status.message
@@ -209,6 +213,30 @@ spec:
                     timezone:
                       type: string
                       description: "IANA time zone where periods start (midnight, Monday, the 1st). Default UTC."
+                modelBudgets:
+                  type: object
+                  description: "Dollar budgets for single models on this key, e.g. claude-opus-4-5: {usd: \"5\", period: daily}"
+                  additionalProperties:
+                    type: object
+                    required: [usd]
+                    properties:
+                      usd:
+                        type: string
+                        pattern: '^[0-9]+(\.[0-9]+)?$'
+                      period:
+                        type: string
+                        enum: [daily, weekly, monthly]
+                        default: monthly
+                      timezone:
+                        type: string
+                maxTokens:
+                  type: integer
+                  minimum: 1
+                  description: "Output cap added to requests that don't set max_tokens. Keeps budget reservations small."
+                expiresAt:
+                  type: string
+                  format: date-time
+                  description: "When the key stops working (RFC 3339), e.g. 2026-12-31T23:59:59Z"
             status:
               type: object
               properties:
@@ -242,7 +270,7 @@ spec:
                   type: string
                 spend:
                   type: object
-                  description: "Spend in the current budget period, written by Valetkey."
+                  description: "Spend in the current budget period, written by Valetkey. usd is the total of all replicas."
                   properties:
                     periodStart:
                       type: string
@@ -254,6 +282,52 @@ spec:
                       type: integer
                     updatedAt:
                       type: string
+                    pods:
+                      type: object
+                      description: "Each replica's share of this period's spend"
+                      additionalProperties:
+                        type: object
+                        nullable: true
+                        properties:
+                          periodStart:
+                            type: string
+                          usd:
+                            type: string
+                          requests:
+                            type: integer
+                          unpriced:
+                            type: integer
+                modelSpend:
+                  type: object
+                  description: "Spend per model with a budget in spec.modelBudgets"
+                  additionalProperties:
+                      type: object
+                      properties:
+                        periodStart:
+                          type: string
+                        usd:
+                          type: string
+                        requests:
+                          type: integer
+                        unpriced:
+                          type: integer
+                        updatedAt:
+                          type: string
+                        pods:
+                          type: object
+                          description: "Each replica's share of this period's spend"
+                          additionalProperties:
+                            type: object
+                            nullable: true
+                            properties:
+                              periodStart:
+                                type: string
+                              usd:
+                                type: string
+                              requests:
+                                type: integer
+                              unpriced:
+                                type: integer
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -365,7 +439,7 @@ spec:
                   type: string
                 spend:
                   type: object
-                  description: "Spend in the current budget period, written by Valetkey."
+                  description: "Spend in the current budget period, written by Valetkey. usd is the total of all replicas."
                   properties:
                     periodStart:
                       type: string
@@ -377,3 +451,18 @@ spec:
                       type: integer
                     updatedAt:
                       type: string
+                    pods:
+                      type: object
+                      description: "Each replica's share of this period's spend"
+                      additionalProperties:
+                        type: object
+                        nullable: true
+                        properties:
+                          periodStart:
+                            type: string
+                          usd:
+                            type: string
+                          requests:
+                            type: integer
+                          unpriced:
+                            type: integer

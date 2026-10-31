@@ -54,6 +54,15 @@ print(msg.content[0].text)
 
 `/v1/messages` is passed through to Anthropic providers unchanged.
 
+## Embeddings and the Responses API
+
+`/v1/embeddings` and `/v1/responses` work like chat completions, with the same key, limits and budgets. They go to OpenAI-compatible providers only (Anthropic has no such endpoints).
+
+```python
+vec = client.embeddings.create(model="text-embedding-3-small", input="Invoice 4711")
+resp = client.responses.create(model="gpt-4o-mini", input="Summarize invoice 4711")
+```
+
 ## Which models can a key use?
 
 ```bash
@@ -66,9 +75,9 @@ The list is the tenant's providers' models, narrowed to the key's allowed models
 
 | Status | Meaning |
 |---|---|
-| 401 | Missing or unknown key, or the client IP isn't in the key's allowed ranges |
-| 403 | The key may not use this model |
-| 429 | The key's requests-per-minute or tokens-per-minute limit is reached (see `Retry-After`) |
+| 401 | Missing, unknown or expired key, or the client IP isn't in the key's allowed ranges |
+| 403 | The key may not use this model (`model_not_allowed`), or it has a budget and the model has no known price (`model_not_priced`) |
+| 429 | The key's requests-per-minute or tokens-per-minute limit is reached (see `Retry-After`), or a budget is used up (`insufficient_quota`) |
 | 503 | No enabled provider in the tenant serves this model |
 | 502 / 504 | Every provider failed or timed out |
 

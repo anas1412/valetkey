@@ -12,31 +12,51 @@ type Rates struct {
 	CacheRead    USD `json:"cacheRead"`
 	CacheWrite5m USD `json:"cacheWrite5m"`
 	CacheWrite1h USD `json:"cacheWrite1h"`
-	Reasoning    USD `json:"reasoning,omitempty"` // 0 = same as Output
+	Reasoning    USD `json:"reasoning,omitempty"`   // 0 = same as Output
+	InputAudio   USD `json:"inputAudio,omitempty"`  // 0 = same as Input
+	OutputAudio  USD `json:"outputAudio,omitempty"` // 0 = same as Output
 }
 
-// Tokens is one request's usage, split the way providers bill it.
+// Tokens is one request's usage, split the way providers bill it. Reasoning is part
+// of Output; AudioInput is part of Input and AudioOutput part of Output.
 type Tokens struct {
 	Input, CacheRead, CacheWrite5m, CacheWrite1h, Output, Reasoning int
+	AudioInput, AudioOutput                                         int
 }
 
-// Cost prices a request. Reasoning tokens are part of Output and only priced
-// differently when the provider lists a separate reasoning rate.
+// Cost prices a request. Reasoning and audio tokens are priced differently only
+// when the provider lists a separate rate for them.
 func (r Rates) Cost(t Tokens) USD {
-	c := r.Input*USD(t.Input) + r.CacheRead*USD(t.CacheRead) +
-		r.CacheWrite5m*USD(t.CacheWrite5m) + r.CacheWrite1h*USD(t.CacheWrite1h)
-	reasoning := min(t.Reasoning, t.Output)
-	if r.Reasoning != 0 && r.Reasoning != r.Output {
-		return c + r.Reasoning*USD(reasoning) + r.Output*USD(t.Output-reasoning)
+	c := r.CacheRead*USD(t.CacheRead) + r.CacheWrite5m*USD(t.CacheWrite5m) + r.CacheWrite1h*USD(t.CacheWrite1h)
+	text := t.Input
+	if r.InputAudio != 0 {
+		audio := min(t.AudioInput, t.Input)
+		c += r.InputAudio * USD(audio)
+		text -= audio
 	}
-	return c + r.Output*USD(t.Output)
+	c += r.Input * USD(text)
+
+	out := t.Output
+	if r.OutputAudio != 0 {
+		audio := min(t.AudioOutput, out)
+		c += r.OutputAudio * USD(audio)
+		out -= audio
+	}
+	if r.Reasoning != 0 && r.Reasoning != r.Output {
+		reasoning := min(t.Reasoning, out)
+		c += r.Reasoning * USD(reasoning)
+		out -= reasoning
+	}
+	return c + r.Output*USD(out)
 }
 
 // MaxInput is the highest price any input token can cost.
-func (r Rates) MaxInput() USD { return max(r.Input, r.CacheRead, r.CacheWrite5m, r.CacheWrite1h) }
+func (r Rates) MaxInput() USD {
+	return max(r.Input, r.CacheRead, r.CacheWrite5m, r.CacheWrite1h, r.InputAudio)
+}
 
 // MaxOutput is the highest price any output token can cost.
-func (r Rates) MaxOutput() USD { return max(r.Output, r.Reasoning) }
+func (r Rates) MaxOutput() USD { return max(r.Output, r.Reasoning, r.OutputAudio) }
 
 // Tier applies when a request's input is above a size (long-context pricing).
 type Tier struct {

@@ -70,6 +70,12 @@ export interface ProxyKeySpec {
   rpm?: number
   tpm?: number
   budget?: Budget
+  /** Output cap added to requests that don't set max_tokens. */
+  maxTokens?: number
+  /** RFC 3339; the key stops working then. */
+  expiresAt?: string
+  /** Budgets for single models, by model name. */
+  modelBudgets?: Record<string, Budget>
 }
 
 export interface ProxyKey {
@@ -84,6 +90,7 @@ export interface ProxyKey {
   requestsWindow: '30d' | 'pod'
   lastUsed?: number
   spend?: Spend
+  modelSpend?: Record<string, Spend>
 }
 
 export interface MinuteBucket {

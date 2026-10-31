@@ -28,6 +28,8 @@ type Metrics struct {
 	BudgetRejected   *prometheus.CounterVec
 	BudgetLimit      *prometheus.GaugeVec
 	BudgetSpent      *prometheus.GaugeVec
+	PricesFetched    prometheus.Gauge
+	PriceSourceUp    *prometheus.GaugeVec
 }
 
 func New() *Metrics {
@@ -52,6 +54,8 @@ func New() *Metrics {
 		BudgetRejected:   f.counter("valetkey_budget_rejections_total", "Requests refused because a budget would be exceeded", "group", "scope"),
 		BudgetLimit:      f.gauge("valetkey_budget_usd", "Budget per period in US dollars", "scope", "name"),
 		BudgetSpent:      f.gauge("valetkey_budget_spent_usd", "Spend in the current budget period in US dollars", "scope", "name"),
+		PricesFetched:    f.gauge("valetkey_pricing_fetched_timestamp_seconds", "When the price list in use was fetched (Unix time)").WithLabelValues(),
+		PriceSourceUp:    f.gauge("valetkey_pricing_source_up", "Whether the last fetch from a price source worked (1) or not (0)", "source"),
 	}
 }
 

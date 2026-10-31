@@ -57,7 +57,7 @@ func openAIToAnthropic(body obj) (obj, error) {
 		}
 	}
 
-	req := obj{"model": body["model"], "messages": out, "max_tokens": firstOf(body["max_completion_tokens"], body["max_tokens"], 4096)}
+	req := obj{"model": body["model"], "messages": out, "max_tokens": firstOf(body["max_completion_tokens"], body["max_tokens"], anthropicDefaultMaxTokens)}
 	if out == nil {
 		req["messages"] = []obj{}
 	}

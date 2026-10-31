@@ -24,6 +24,10 @@ rules:
   - apiGroups: ['']
     resources: [namespaces]
     verbs: [list]
+  # Budget alerts on keys (in tenant namespaces) and tenants.
+  - apiGroups: ['']
+    resources: [events]
+    verbs: [create]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -55,6 +59,14 @@ rules:
   - apiGroups: ['']
     resources: [secrets]
     verbs: [get, list, watch, create, update, delete]
+  # Picks the one replica that mints keys and writes status.
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [{{ include "valetkey.fullname" . }}]
+    verbs: [get, update]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create]
   # The last fetched price list, kept so restarts don't depend on the internet.
   - apiGroups: ['']
     resources: [configmaps]

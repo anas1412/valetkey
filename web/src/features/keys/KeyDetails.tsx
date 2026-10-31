@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/utils'
 import { useToast } from '@/lib/toast'
-import { timeAgo } from '@/lib/format'
+import { formatUSD, timeAgo } from '@/lib/format'
+import { SpendBar } from '@/components/SpendBar'
 import type { ProxyKey } from '@/lib/types'
 
 const PLACEHOLDER = 'sk-proxy-…'
@@ -42,7 +43,19 @@ export function KeyDetails({ apiKey, proxyURL }: { apiKey: ProxyKey; proxyURL: s
         <span>Secret: <code className="text-text-primary">{apiKey.namespace}/{apiKey.secretName ?? `${apiKey.name}-valetkey`}</code></span>
         <span>Requests: <span className="text-text-primary tabular-nums">{apiKey.requests}</span></span>
         <span>Last used: <span className="text-text-primary">{timeAgo(apiKey.lastUsed)}</span></span>
+        {apiKey.spend && <span>Spent this {apiKey.spend.period === 'daily' ? 'day' : apiKey.spend.period === 'weekly' ? 'week' : 'month'}: <span className="text-text-primary tabular-nums">{formatUSD(apiKey.spend.spent)}</span></span>}
       </div>
+
+      {apiKey.modelSpend && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(apiKey.modelSpend).map(([model, spend]) => (
+            <div key={model} className="rounded-lg border border-border p-3">
+              <div className="mb-1.5 text-xs text-text-secondary">{model}</div>
+              <SpendBar spend={spend} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <code className="rounded-md bg-surface-raised border border-border px-2.5 py-1.5 text-xs text-text-primary break-all">

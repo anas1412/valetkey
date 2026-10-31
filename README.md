@@ -26,11 +26,12 @@
 - **Admin-managed keys, no self-service.** Tenants are plain users with no cluster access. The admin creates every key and hands it out; a tenant only ever holds its key.
 - **Any provider.** OpenAI, Anthropic, and anything OpenAI-compatible (vLLM, Ollama, OpenRouter, Groq, DeepSeek, Azure). OpenAI clients can use Anthropic models too.
 - **Rules per key.** Allowed models, IP ranges, requests and tokens per minute, scaled per tenant. Automatic failover between providers.
-- **Dollar budgets.** Per key and per tenant, per day, week or month, from live provider prices, DeepSeek peak hours included. Spend never goes past a budget.
+- **Dollar budgets.** Per key, per tenant and per model, per day, week or month, from live provider prices, DeepSeek peak hours included. Spend never goes past a budget, and you get Kubernetes Events and Prometheus alerts before it runs out.
+- **Chat, embeddings and the Responses API.** `/v1/chat/completions`, `/v1/messages`, `/v1/embeddings` and `/v1/responses`. Keys can expire and carry a default `max_tokens`.
 
 ## Minimal by design
 
-- **One small image.** A single static Go binary on distroless, light on memory, one replica is plenty.
+- **One small image.** A single static Go binary on distroless, light on memory. One replica is plenty; run two for uptime.
 - **Nothing extra to run.** No database, no Redis, no passwords. State is CRDs and Secrets; access is Kubernetes RBAC.
 - **No prompts stored.** Valetkey only counts requests and tokens. It never keeps prompts or responses.
 - **Uses what you already have.** Usage history comes from your Prometheus, charts from your Grafana.

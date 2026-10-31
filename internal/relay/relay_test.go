@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -96,12 +97,16 @@ func newFixture(t *testing.T) *fixture {
 				route.Models = []string{"gpt-4o-mini"}
 			case "rpm1":
 				route.ProxyKeyName, route.RPM = "limited", 1
+			case "maxtok":
+				route.MaxTokens = 77
 			}
 			h(w, r.WithContext(auth.WithRoute(r.Context(), route)))
 		}
 	}
 	mux.HandleFunc("POST /v1/chat/completions", withRoute(rl.ChatCompletions))
 	mux.HandleFunc("POST /v1/messages", withRoute(rl.Messages))
+	mux.HandleFunc("POST /v1/embeddings", withRoute(rl.Embeddings))
+	mux.HandleFunc("POST /v1/responses", withRoute(rl.Responses))
 	f.proxy = httptest.NewServer(mux)
 	t.Cleanup(f.proxy.Close)
 	return f
@@ -198,6 +203,38 @@ func TestRelay(t *testing.T) {
 		}
 	})
 
+	t.Run("embeddings and responses go to the same path upstream, never to Anthropic channels", func(t *testing.T) {
+		for _, path := range []string{"/v1/embeddings", "/v1/responses"} {
+			resp, _ := f.post(t, path, map[string]any{"model": "gpt-4o-mini", "input": "hi"}, nil)
+			if resp.StatusCode != 200 || f.last().path != path || f.last().headers.Get("Authorization") != "Bearer real-ok-key" {
+				t.Fatalf("%s: status %d, upstream %s", path, resp.StatusCode, f.last().path)
+			}
+		}
+		resp, body := f.post(t, "/v1/embeddings", map[string]any{"model": "claude-x", "input": "hi"}, nil)
+		if resp.StatusCode != http.StatusServiceUnavailable || body["error"].(map[string]any)["type"] != "no_channel_available" {
+			t.Fatalf("embeddings on an anthropic-only model: %d %v", resp.StatusCode, body)
+		}
+	})
+
+	t.Run("the key's default max_tokens is added when the request has none", func(t *testing.T) {
+		hdr := map[string]string{"X-Test-Route": "maxtok"}
+		f.post(t, "/v1/chat/completions", map[string]any{"model": "gpt-4o-mini", "messages": []any{}}, hdr)
+		if f.last().body["max_tokens"] != 77.0 {
+			t.Fatalf("openai-compatible body %v", f.last().body)
+		}
+		f.post(t, "/v1/chat/completions", map[string]any{"model": "claude-x", "messages": []any{map[string]any{"role": "user", "content": "hi"}}}, hdr)
+		if f.last().body["max_tokens"] != 77.0 {
+			t.Fatalf("translated anthropic body %v", f.last().body)
+		}
+		f.post(t, "/v1/responses", map[string]any{"model": "gpt-4o-mini", "input": "hi", "max_output_tokens": 5}, hdr)
+		if f.last().body["max_output_tokens"] != 5.0 {
+			t.Fatalf("the request's own cap must win: %v", f.last().body)
+		}
+		if got := maxTokensField(OpenAI, types.ChannelSpec{BaseURL: "https://api.openai.com"}); got != "max_completion_tokens" {
+			t.Fatalf("official OpenAI field %q", got)
+		}
+	})
+
 	t.Run("client errors are answered immediately with JSON", func(t *testing.T) {
 		resp, body := f.post(t, "/v1/chat/completions", map[string]any{"model": "nobody-serves-this", "messages": []any{}}, nil)
 		if resp.StatusCode != 503 || body["error"].(map[string]any)["type"] != "no_channel_available" {
@@ -236,6 +273,7 @@ func TestTokenAuth(t *testing.T) {
 	reg := registry.New()
 	allow, _ := keys.ParseAllowList([]string{"10.0.0.0/8"})
 	reg.UpsertRoute("uid", registry.Route{KeyHash: keys.Hash("sk-proxy-good"), Group: "team", AllowList: allow})
+	reg.UpsertRoute("old", registry.Route{KeyHash: keys.Hash("sk-proxy-old"), Group: "team", ExpiresAt: time.Now().Add(-time.Second)})
 	h := auth.TokenAuth(reg, "", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
 
 	try := func(header, value, remote string) int {
@@ -256,6 +294,7 @@ func TestTokenAuth(t *testing.T) {
 		"unknown key": {"Authorization", "Bearer sk-proxy-bad", "10.0.0.1:1", 401},
 		"wrong IP":    {"Authorization", "Bearer sk-proxy-good", "8.8.8.8:1", 401},
 		"valid":       {"X-Api-Key", "sk-proxy-good", "[::ffff:10.0.0.1]:1", 204},
+		"expired":     {"X-Api-Key", "sk-proxy-old", "10.0.0.1:1", 401},
 	} {
 		if got := try(c.header, c.value, c.remote); got != c.want {
 			t.Errorf("%s: got %d, want %d", name, got, c.want)
