@@ -51,6 +51,8 @@ export interface ColumnDef<T> {
   width?: string;
   align?: 'left' | 'center' | 'right';
   priority?: 'high' | 'medium' | 'low';
+  /** Hidden until turned on in the column picker; still usable as a filter. */
+  defaultHidden?: boolean;
 }
 
 export interface DataTableContextValue<T = any> {
@@ -837,7 +839,9 @@ export function DataTable<T = any>({
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
-  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(new Set());
+  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(
+    () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.id))
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 

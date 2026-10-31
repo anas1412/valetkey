@@ -62,7 +62,7 @@ export function KeysPage() {
       ),
     },
     {
-      id: 'namespace', header: 'Tenant', accessorKey: 'namespace', sortable: true, filterable: true, priority: 'low',
+      id: 'namespace', header: 'Tenant', accessorKey: 'namespace', sortable: true, filterable: true, priority: 'low', defaultHidden: true,
       filterOptions: (groups.data ?? []).map((g) => ({ label: g.name, value: g.name })),
     },
     {
