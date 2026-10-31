@@ -67,7 +67,7 @@ spec:
   source:
     repoURL: ghcr.io/anas1412/charts
     chart: valetkey
-    targetRevision: 0.2.1
+    targetRevision: 0.3.0
     helm:
       valuesObject: {}            # your Helm values, see Reference > Helm values
   destination:
@@ -120,7 +120,7 @@ spec:
   chart:
     spec:
       chart: valetkey
-      version: 0.2.1
+      version: 0.3.0
       sourceRef: { kind: HelmRepository, name: valetkey }
   install: { crds: CreateReplace }
   upgrade: { crds: CreateReplace }   # Helm alone never updates CRDs
