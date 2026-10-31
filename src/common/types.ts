@@ -1,4 +1,5 @@
 import type { KubernetesObject } from '@kubernetes/client-node';
+import type { BlockList } from 'node:net';
 
 export const GROUP = 'llmproxy.llmproxy.io';
 export const VERSION = 'v1alpha1';
@@ -28,8 +29,6 @@ export interface ChannelSpec {
   skipTLSVerify?: boolean;
   /** Model name rewrite rules: requestModel → upstreamModel */
   modelMapping?: Record<string, string>;
-  /** Free-form adapter-specific configuration */
-  config?: Record<string, unknown>;
 }
 
 export interface ChannelStatus {
@@ -50,8 +49,12 @@ export interface ProxyKeySpec {
   status?: 'Enabled' | 'Disabled';
   /** Model allowlist — must be a subset of the group channels' models (if set) */
   models?: string[];
-  /** Allowed client IP CIDRs. Empty = all IPs allowed. */
+  /** Allowed client IP CIDRs (IPv4 or IPv6). Empty = all IPs allowed. */
   subnets?: string[];
+  /** Requests per minute for this key, before the group's rpmRatio. 0/absent = unlimited. */
+  rpm?: number;
+  /** Tokens per minute for this key, before the group's tpmRatio. 0/absent = unlimited. */
+  tpm?: number;
 }
 
 export interface ProxyKeyStatus {
@@ -62,8 +65,6 @@ export interface ProxyKeyStatus {
   keyHash?: string;
   /** Name of the tenant Secret holding the raw key */
   secretName?: string;
-  /** Tracked request count (in-memory, resets on restart) */
-  requestCount?: number;
 }
 
 export interface ProxyKey extends KubernetesObject {
@@ -121,7 +122,10 @@ export interface Route {
   namespace: string;
   proxyKeyName: string;
   models?: string[];
-  subnets?: string[];
+  /** Pre-built from ProxyKey spec.subnets */
+  allowList?: BlockList;
+  rpm?: number;
+  tpm?: number;
 }
 
 /** A channel entry in the registry — the CRD + resolved upstream key */

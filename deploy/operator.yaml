@@ -4,6 +4,7 @@ metadata:
   name: llmproxy-operator
   namespace: llmproxy-system
 ---
+# Cluster-wide: tenants' ProxyKeys and the Secrets minted next to them.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -11,13 +12,17 @@ metadata:
 rules:
   - apiGroups: [llmproxy.llmproxy.io]
     resources: [proxykeys]
-    verbs: [get, list, watch]
+    verbs: [get, list, watch, create, update, delete]   # create/update/delete: admin API + dashboard
   - apiGroups: [llmproxy.llmproxy.io]
     resources: [proxykeys/status]
     verbs: [get, patch, update]
+  # Tenant Secret names are generated (<proxykey>-llmproxy), so resourceNames can't narrow this.
   - apiGroups: ['']
     resources: [secrets]
-    verbs: [get, create, update]
+    verbs: [get, create, update, delete]
+  - apiGroups: ['']
+    resources: [namespaces]
+    verbs: [list]                                         # tenant picker in the dashboard
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -32,6 +37,7 @@ subjects:
     name: llmproxy-operator
     namespace: llmproxy-system
 ---
+# Operator namespace only: Channels, Groups and provider API key Secrets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -39,20 +45,14 @@ metadata:
   namespace: llmproxy-system
 rules:
   - apiGroups: [llmproxy.llmproxy.io]
-    resources: [channels]
-    verbs: [get, list, watch]
+    resources: [channels, groups]
+    verbs: [get, list, watch, create, update, delete]
   - apiGroups: [llmproxy.llmproxy.io]
-    resources: [channels/status]
-    verbs: [get, patch, update]
-  - apiGroups: [llmproxy.llmproxy.io]
-    resources: [groups]
-    verbs: [get, list, watch]
-  - apiGroups: [llmproxy.llmproxy.io]
-    resources: [groups/status]
+    resources: [channels/status, groups/status]
     verbs: [get, patch, update]
   - apiGroups: ['']
     resources: [secrets]
-    verbs: [get, list, watch]
+    verbs: [get, list, watch, create, update, delete]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -74,6 +74,7 @@ metadata:
   name: llmproxy
   namespace: llmproxy-system
 spec:
+  # Keep at 1: the reconciler has no leader election, and rate limits / dashboard stats are in-memory.
   replicas: 1
   selector:
     matchLabels: { app: llmproxy }
@@ -82,9 +83,13 @@ spec:
       labels: { app: llmproxy }
     spec:
       serviceAccountName: llmproxy-operator
+      terminationGracePeriodSeconds: 60   # lets in-flight streams finish on shutdown
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: llmproxy
-          image: ghcr.io/YOURORG/llmproxy-k8s:latest
+          image: ghcr.io/anas1412/llmproxy-k8s:2.0.0
           env:
             - name: OPERATOR_NAMESPACE
               valueFrom:
@@ -96,18 +101,23 @@ spec:
                 secretKeyRef:
                   name: llmproxy-admin
                   key: adminKey
-                  optional: true
+                  optional: true   # without it the admin API and dashboard stay disabled
           ports:
             - { containerPort: 8000, name: proxy }
-            - { containerPort: 8081, name: health }
+            - { containerPort: 8081, name: admin }
           readinessProbe:
-            httpGet: { path: /readyz, port: health }
+            httpGet: { path: /readyz, port: admin }
           livenessProbe:
-            httpGet: { path: /healthz, port: health }
+            httpGet: { path: /healthz, port: admin }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
 ---
+# Tenant-facing: only the proxy port.
 apiVersion: v1
 kind: Service
 metadata:
@@ -117,4 +127,14 @@ spec:
   selector: { app: llmproxy }
   ports:
     - { name: proxy, port: 8000, targetPort: proxy }
-    - { name: health, port: 8081, targetPort: health }
+---
+# Internal: dashboard, admin API, health and Prometheus metrics.
+apiVersion: v1
+kind: Service
+metadata:
+  name: llmproxy-admin
+  namespace: llmproxy-system
+spec:
+  selector: { app: llmproxy }
+  ports:
+    - { name: admin, port: 8081, targetPort: admin }

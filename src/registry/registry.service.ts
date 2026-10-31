@@ -100,6 +100,21 @@ export class RegistryService {
       .filter((e): e is ChannelEntry => !!e && (e.channel.spec.status ?? 'Enabled') === 'Enabled' && !!e.upstreamKey);
   }
 
+  // -- Readiness ---------------------------------------------------------------
+
+  private synced = new Set<string>();
+  private static readonly INFORMERS = ['channels', 'groups', 'secrets', 'proxykeys'];
+
+  /** Called by each informer once its initial list has been loaded. */
+  markSynced(informer: string): void {
+    this.synced.add(informer);
+  }
+
+  /** True once every informer has completed its initial list. */
+  isReady(): boolean {
+    return RegistryService.INFORMERS.every((i) => this.synced.has(i));
+  }
+
   // -- Stats for health/metrics -----------------------------------------------
 
   stats(): { routes: number; channels: number; groups: number } {

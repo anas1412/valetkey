@@ -1,5 +1,5 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { isIP } from 'node:net';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { BlockList, isIP } from 'node:net';
 
 const KEY_PREFIX = 'sk-proxy-';
 
@@ -20,28 +20,38 @@ export function hashesEqual(a: string, b: string): boolean {
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
-/** Check if an IP address matches any CIDR in the list. Empty list = allow all. */
-export function ipInSubnets(ip: string, subnets: string[]): boolean {
-  if (!subnets.length) return true;
-  // Normalize IPv6-mapped IPv4 addresses like ::ffff:10.0.0.1
-  const normalized = ip.replace(/^::ffff:/, '');
-  const ipInt = ipToInt(normalized);
-  if (ipInt === null) return false;
-
-  for (const cidr of subnets) {
-    const parts = cidr.split('/');
-    const netInt = ipToInt(parts[0]);
-    const prefix = parseInt(parts[1], 10);
-    if (netInt === null || isNaN(prefix)) continue;
-
-    const mask = prefix === 0 ? 0 : ~0 << (32 - prefix);
-    if ((ipInt & mask) === (netInt & mask)) return true;
-  }
-  return false;
+/** Constant-time comparison of two secrets of any length */
+export function secretsEqual(a: string, b: string): boolean {
+  return hashesEqual(hashKey(a), hashKey(b));
 }
 
-function ipToInt(ip: string): number | null {
-  if (isIP(ip) !== 4) return null;
-  const parts = ip.split('.');
-  return ((+parts[0] << 24) | (+parts[1] << 16) | (+parts[2] << 8) | +parts[3]) >>> 0;
+/** HMAC-SHA256 hex signature, used for dashboard session cookies */
+export function sign(secret: string, value: string): string {
+  return createHmac('sha256', secret).update(value).digest('hex');
+}
+
+/**
+ * Builds an IP allow list from CIDRs (IPv4 and IPv6; a bare address means a single host).
+ * Throws on an invalid entry so the ProxyKey can report it.
+ */
+export function buildAllowList(subnets: string[]): BlockList {
+  const list = new BlockList();
+  for (const cidr of subnets) {
+    const [addr, prefixStr] = cidr.trim().split('/');
+    const family = isIP(addr);
+    if (!family) throw new Error(`invalid subnet "${cidr}"`);
+    const max = family === 6 ? 128 : 32;
+    const prefix = prefixStr === undefined ? max : Number(prefixStr);
+    if (!Number.isInteger(prefix) || prefix < 0 || prefix > max) throw new Error(`invalid subnet "${cidr}"`);
+    list.addSubnet(addr, prefix, family === 6 ? 'ipv6' : 'ipv4');
+  }
+  return list;
+}
+
+/** True if the client IP is in the allow list. IPv6-mapped IPv4 (::ffff:10.0.0.1) is matched as IPv4. */
+export function ipAllowed(ip: string, list: BlockList): boolean {
+  const normalized = ip.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/, '');
+  const family = isIP(normalized);
+  if (!family) return false;
+  return list.check(normalized, family === 6 ? 'ipv6' : 'ipv4');
 }

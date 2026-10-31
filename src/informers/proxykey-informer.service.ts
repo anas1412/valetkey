@@ -1,13 +1,18 @@
-import { Injectable, type OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { makeInformer, type KubernetesListObject } from '@kubernetes/client-node';
 import { K8sService } from '../k8s/k8s.service.js';
+import { RegistryService } from '../registry/registry.service.js';
 import { ReconcilerService } from '../reconciler/reconciler.service.js';
+import { runInformer } from './run-informer.js';
 import { GROUP, VERSION, PROXYKEY_PLURAL, type ProxyKey } from '../common/types.js';
 
 @Injectable()
 export class ProxyKeyInformerService implements OnModuleInit {
+  private readonly log = new Logger(ProxyKeyInformerService.name);
+
   constructor(
     private readonly k8s: K8sService,
+    private readonly registry: RegistryService,
     private readonly reconciler: ReconcilerService,
   ) {}
 
@@ -22,12 +27,6 @@ export class ProxyKeyInformerService implements OnModuleInit {
     informer.on('update', (pk: ProxyKey) => this.reconciler.enqueue(pk));
     informer.on('delete', (pk: ProxyKey) => this.reconciler.handleDelete(pk));
 
-    informer.on('error', (err: unknown) => {
-      console.error(`proxykey informer error, restarting in 5s:`, String(err));
-      setTimeout(() => informer.start().catch(console.error), 5000);
-    });
-
-    await informer.start();
-    console.log('proxykey informer started');
+    await runInformer(informer, 'proxykeys', this.log, this.registry);
   }
 }

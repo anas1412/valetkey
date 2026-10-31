@@ -66,6 +66,8 @@ spec:
   status: Enabled
   models: [gpt-4o-mini]
   subnets: [10.0.0.0/8]
+  rpm: 60        # requests per minute (× group rpmRatio); omit for unlimited
+  tpm: 100000    # tokens per minute (× group tpmRatio)
 ---
 # 6. Another key in the same tenant namespace
 apiVersion: llmproxy.llmproxy.io/v1alpha1

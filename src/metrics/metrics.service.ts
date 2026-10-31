@@ -11,6 +11,7 @@ export class MetricsService {
   readonly rateLimitedTotal: prom.Counter;
   readonly keysMintedTotal: prom.Counter;
   readonly retriesTotal: prom.Counter;
+  readonly channelErrors: prom.Counter;
 
   readonly requestDuration: prom.Histogram;
   readonly ttfb: prom.Histogram;
@@ -18,7 +19,7 @@ export class MetricsService {
 
   readonly channelsActive: prom.Gauge;
   readonly proxykeysActive: prom.Gauge;
-  readonly channelsErrors: prom.Gauge;
+
 
   constructor() {
     this._registry = new prom.Registry();
@@ -48,14 +49,14 @@ export class MetricsService {
     this.rateLimitedTotal = new prom.Counter({
       name: 'llmproxy_rate_limited_total',
       help: 'Total rate-limited requests',
-      labelNames: ['channel', 'tier', 'reason'],
+      labelNames: ['group', 'tier'],
       registers: [this._registry],
     });
 
     this.keysMintedTotal = new prom.Counter({
       name: 'llmproxy_keys_minted_total',
       help: 'Total virtual keys minted',
-      labelNames: ['channel'],
+      labelNames: ['group'],
       registers: [this._registry],
     });
 
@@ -99,21 +100,21 @@ export class MetricsService {
 
     this.proxykeysActive = new prom.Gauge({
       name: 'llmproxy_proxykeys_active',
-      help: 'Number of active proxy keys per channel',
-      labelNames: ['channel'],
+      help: 'Number of active proxy keys per group',
+      labelNames: ['group'],
       registers: [this._registry],
     });
 
-    this.channelsErrors = new prom.Gauge({
-      name: 'llmproxy_channels_errors',
-      help: 'Current error count per channel',
+    this.channelErrors = new prom.Counter({
+      name: 'llmproxy_channel_errors_total',
+      help: 'Failed upstream attempts per channel (connection errors, timeouts, 429/5xx)',
       labelNames: ['channel'],
       registers: [this._registry],
     });
   }
 
   contentType(): string {
-    return prom.register.contentType;
+    return this._registry.contentType;
   }
 
   async registry(): Promise<string> {

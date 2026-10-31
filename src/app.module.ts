@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { ManagementModule } from './management/management.module.js';
 import { MetricsModule } from './metrics/metrics.module.js';
 import { HealthModule } from './health/health.module.js';
+import { StatsModule } from './stats/stats.module.js';
 
 @Global()
 @Module({
@@ -22,6 +23,7 @@ import { HealthModule } from './health/health.module.js';
     AuthModule,
     ManagementModule,
     MetricsModule,
+    StatsModule,
     HealthModule,
   ],
   providers: [AppConfig],

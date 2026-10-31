@@ -20,6 +20,11 @@ import {
   type Group,
 } from '../common/types.js';
 
+/** True when a client-node call failed with HTTP 404. */
+export function isNotFound(err: unknown): boolean {
+  return (err as { code?: number } | null)?.code === 404;
+}
+
 @Injectable()
 export class K8sService implements OnModuleInit {
   private kc!: KubeConfig;
@@ -69,6 +74,13 @@ export class K8sService implements OnModuleInit {
     ) as unknown as Promise<void>;
   }
 
+  async patchChannelStatus(ns: string, name: string, status: NonNullable<Channel['status']>): Promise<void> {
+    await this._custom.patchNamespacedCustomObjectStatus(
+      { group: GROUP, version: VERSION, namespace: ns, plural: CHANNEL_PLURAL, name, body: { status } },
+      setHeaderOptions('Content-Type', PatchStrategy.MergePatch),
+    ) as unknown as Promise<void>;
+  }
+
   async patchProxyKeyStatus(ns: string, name: string, status: NonNullable<ProxyKey['status']>): Promise<void> {
     await this._custom.patchNamespacedCustomObjectStatus(
       { group: GROUP, version: VERSION, namespace: ns, plural: PROXYKEY_PLURAL, name, body: { status } },
@@ -76,25 +88,63 @@ export class K8sService implements OnModuleInit {
     ) as unknown as Promise<void>;
   }
 
-  async readSecret(ns: string, name: string): Promise<V1Secret> {
-    const resp = await this._core.readNamespacedSecret({ name, namespace: ns });
-    return (resp as any).body as V1Secret;
+  /** Returns the Secret, or undefined if it does not exist. Other API errors are thrown. */
+  async readSecret(ns: string, name: string): Promise<V1Secret | undefined> {
+    try {
+      return await this._core.readNamespacedSecret({ name, namespace: ns });
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw err;
+    }
   }
 
   async getSecretKey(ns: string, name: string, key: string): Promise<string | undefined> {
+    const secret = await this.readSecret(ns, name);
+    const b64 = secret?.data?.[key];
+    return b64 ? Buffer.from(b64, 'base64').toString('utf8') : undefined;
+  }
+
+  getObject<T>(plural: string, ns: string, name: string): Promise<T> {
+    return this._custom.getNamespacedCustomObject({ group: GROUP, version: VERSION, namespace: ns, plural, name }) as Promise<T>;
+  }
+
+  createObject<T>(plural: string, ns: string, body: T): Promise<T> {
+    return this._custom.createNamespacedCustomObject({
+      group: GROUP, version: VERSION, namespace: ns, plural, body: body as object,
+    }) as Promise<T>;
+  }
+
+  /** Replaces only `spec`, keeping metadata and status of the live object. */
+  async replaceSpec<T extends { spec: unknown }>(plural: string, ns: string, name: string, spec: T['spec']): Promise<T> {
+    const current = await this.getObject<T>(plural, ns, name);
+    return this._custom.replaceNamespacedCustomObject({
+      group: GROUP, version: VERSION, namespace: ns, plural, name, body: { ...current, spec } as object,
+    }) as Promise<T>;
+  }
+
+  async deleteObject(plural: string, ns: string, name: string): Promise<void> {
+    await this._custom.deleteNamespacedCustomObject({ group: GROUP, version: VERSION, namespace: ns, plural, name });
+  }
+
+  /** Deletes a Secret; a missing Secret is not an error. */
+  async deleteSecret(ns: string, name: string): Promise<void> {
     try {
-      const secret = await this.readSecret(ns, name);
-      const b64 = secret.data?.[key];
-      return b64 ? Buffer.from(b64, 'base64').toString('utf8') : undefined;
-    } catch {
-      return undefined;
+      await this._core.deleteNamespacedSecret({ name, namespace: ns });
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
     }
+  }
+
+  async listNamespaces(): Promise<string[]> {
+    const list = await this._core.listNamespace();
+    return list.items.map((n) => n.metadata!.name!);
   }
 
   async createOrReplaceSecret(ns: string, name: string, body: V1Secret): Promise<void> {
     try {
       await this._core.replaceNamespacedSecret({ name, namespace: ns, body });
-    } catch {
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
       await this._core.createNamespacedSecret({ namespace: ns, body });
     }
   }

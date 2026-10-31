@@ -1,7 +1,7 @@
-import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { HttpException, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { RegistryService } from '../registry/registry.service.js';
-import { hashKey, ipInSubnets } from '../common/key-utils.js';
+import { hashKey, ipAllowed } from '../common/key-utils.js';
 import type { Route } from '../common/types.js';
 
 /** Attached to the request by TokenAuthGuard on successful auth */
@@ -16,19 +16,15 @@ export class TokenAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
     const key = this.extractKey(req);
-    if (!key) return false;
+    if (!key) throw unauthorized(req, 'missing API key');
 
-    const h = hashKey(key);
-    const route = this.registry.lookup(h);
-    if (!route) return false;
+    const route = this.registry.lookup(hashKey(key));
+    if (!route) throw unauthorized(req, 'invalid API key');
 
-    // IP whitelist check
-    if (route.subnets?.length) {
-      const clientIP = req.ip ?? req.socket.remoteAddress ?? '';
-      if (!ipInSubnets(clientIP, route.subnets)) return false;
+    if (route.allowList && !ipAllowed(req.ip ?? req.socket.remoteAddress ?? '', route.allowList)) {
+      throw unauthorized(req, 'client IP not allowed for this key');
     }
 
-    // Attach route for downstream handlers
     (req as AuthenticatedRequest).route = route;
     return true;
   }
@@ -39,4 +35,12 @@ export class TokenAuthGuard implements CanActivate {
     const xApiKey = req.headers['x-api-key'];
     return typeof xApiKey === 'string' ? xApiKey : undefined;
   }
+}
+
+/** 401 in the error shape of the API the client is calling. */
+function unauthorized(req: Request, message: string): HttpException {
+  const body = req.path.endsWith('/messages')
+    ? { type: 'error', error: { type: 'authentication_error', message } }
+    : { error: { message, type: 'invalid_api_key', code: 'invalid_api_key' } };
+  return new HttpException(body, 401);
 }
