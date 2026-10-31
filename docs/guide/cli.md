@@ -104,6 +104,20 @@ rotated billing/invoice-api; the old key no longer works
 
 A new key is written to the same Secret right away, and the old one stops working.
 
+## Spend and prices
+
+```bash
+valetkeyctl spend
+```
+
+```
+TENANT    SPENT         BUDGET  PERIOD   RESETS
+research  $0.498806416  $0.50   daily    2026-11-01
+support   $0.42714645   $20.00  monthly  2026-11-01
+```
+
+followed by the same table for keys. `valetkeyctl pricing` lists what each provider model costs right now, per million tokens, and whether DeepSeek models are at peak price. See [Budgets & costs](/guide/budgets).
+
 ## Open the dashboard
 
 ```bash

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/PageHeader'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
-import { formatCount, timeAgo } from '@/lib/format'
+import { formatUSD, formatCount, timeAgo } from '@/lib/format'
 import type { Route } from '@/hooks/use-hash-route'
 import type { HistoryRange, MinuteBucket } from '@/lib/types'
 import { GettingStarted } from './GettingStarted'
@@ -77,8 +77,8 @@ export function OverviewPage({ onNavigate }: { onNavigate: (r: Route) => void })
         <StatCard label="Error rate" value={errorRate} goodWhen="down"
           trend={spark((b) => b.errors).values} trendLabels={requestsSpark.labels}
           period={`${formatCount(totals.errors)} failed requests`} format={(n) => `${n.toFixed(1)}%`} showDelta={false} />
-        <StatCard label="Active keys" value={counts.activeKeys} trend={[counts.activeKeys]}
-          period={`of ${counts.keys} keys`} format={formatCount} showDelta={false} />
+        <StatCard label="Spend" value={data.cost} trend={spark((b) => b.cost).values} trendLabels={requestsSpark.labels}
+          period={`${period}, ${counts.activeKeys} of ${counts.keys} keys active`} format={formatUSD} showDelta={false} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

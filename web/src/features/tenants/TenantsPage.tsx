@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmSheet } from '@/components/ConfirmSheet'
+import { SpendBar } from '@/components/SpendBar'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
@@ -31,6 +32,8 @@ export function TenantsPage() {
       ),
     },
     { id: 'keys', header: 'Keys', accessorKey: 'keys', sortable: true, align: 'right', priority: 'medium' },
+    { id: 'spend', header: 'Spent', accessorFn: (g) => g.spend?.spent ?? 0, sortable: true, priority: 'medium',
+      cell: ({ row }) => <SpendBar spend={row.spend} /> },
     {
       id: 'limits', header: 'Limit ×', priority: 'low',
       accessorFn: (g) => `${g.spec.rpmRatio ?? 1} / ${g.spec.tpmRatio ?? 1}`,
@@ -57,7 +60,7 @@ export function TenantsPage() {
     <>
       <PageHeader
         title="Tenants"
-        description="One tenant per namespace. Choose which providers its keys may use and scale its rate limits."
+        description="One tenant per namespace. Choose which providers its keys may use, scale its rate limits and set a budget."
         actions={<Button variant="primary" leftIcon={<Plus className="size-4" />} onClick={() => setEditing('new')}>Create tenant</Button>}
       />
       <AdvancedDataTable

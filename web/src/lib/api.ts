@@ -1,5 +1,5 @@
 import type {
-  Channel, ChannelSpec, ChannelTestResult, Group, GroupSpec, HistoryRange, OperatorEvent, Overview, ProxyKey, ProxyKeySpec, RequestEntry,
+  Channel, ChannelSpec, ChannelTestResult, Group, GroupSpec, HistoryRange, OperatorEvent, Overview, Pricing, ProxyKey, ProxyKeySpec, RequestEntry,
 } from './types'
 
 /** Thrown for any non-2xx answer; `message` is the server's explanation. */
@@ -52,6 +52,7 @@ export const api = {
   groupModels: (name: string) => request<{ models: string[] | null }>('GET', `/groups/${enc(name)}/models`),
 
   keys: () => request<ProxyKey[]>('GET', '/proxykeys'),
+  pricing: () => request<Pricing>('GET', '/pricing'),
   createKey: (namespace: string, name: string, spec: ProxyKeySpec) => request<ProxyKey>('POST', '/proxykeys', { namespace, name, spec }),
   updateKey: (ns: string, name: string, spec: ProxyKeySpec) => request<ProxyKey>('PUT', `/proxykeys/${enc(ns)}/${enc(name)}`, { spec }),
   deleteKey: (ns: string, name: string) => request<void>('DELETE', `/proxykeys/${enc(ns)}/${enc(name)}`),

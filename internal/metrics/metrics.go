@@ -24,6 +24,10 @@ type Metrics struct {
 	UpstreamDuration *prometheus.HistogramVec
 	ChannelsActive   *prometheus.GaugeVec
 	ProxyKeysActive  *prometheus.GaugeVec
+	Cost             *prometheus.CounterVec
+	BudgetRejected   *prometheus.CounterVec
+	BudgetLimit      *prometheus.GaugeVec
+	BudgetSpent      *prometheus.GaugeVec
 }
 
 func New() *Metrics {
@@ -44,6 +48,10 @@ func New() *Metrics {
 		UpstreamDuration: f.histogram("valetkey_upstream_duration_seconds", "Upstream request duration", []float64{0.5, 1, 5, 10, 30, 60, 120, 300}),
 		ChannelsActive:   f.gauge("valetkey_channels_active", "Number of usable channels by type", "type"),
 		ProxyKeysActive:  f.gauge("valetkey_proxykeys_active", "Number of active proxy keys per group", "group"),
+		Cost:             f.counter("valetkey_cost_usd_total", "Cost of relayed requests in US dollars", "channel", "model", "group", "proxykey_ns", "proxykey_name"),
+		BudgetRejected:   f.counter("valetkey_budget_rejections_total", "Requests refused because a budget would be exceeded", "group", "scope"),
+		BudgetLimit:      f.gauge("valetkey_budget_usd", "Budget per period in US dollars", "scope", "name"),
+		BudgetSpent:      f.gauge("valetkey_budget_spent_usd", "Spend in the current budget period in US dollars", "scope", "name"),
 	}
 }
 

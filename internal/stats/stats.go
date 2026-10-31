@@ -19,6 +19,10 @@ type RequestEntry struct {
 	OutputTokens int    `json:"outputTokens"`
 	LatencyMs    int64  `json:"latencyMs"`
 	Error        string `json:"error,omitempty"`
+	// CostUSD is the request's cost; CostNote is "estimated" (no usage reported,
+	// worst case charged) or "unpriced" (no known price).
+	CostUSD  float64 `json:"costUSD"`
+	CostNote string  `json:"costNote,omitempty"`
 }
 
 type Event struct {
@@ -29,11 +33,12 @@ type Event struct {
 }
 
 type Bucket struct {
-	Minute       int64 `json:"minute"` // epoch minutes
-	Requests     int   `json:"requests"`
-	Errors       int   `json:"errors"`
-	InputTokens  int   `json:"inputTokens"`
-	OutputTokens int   `json:"outputTokens"`
+	Minute       int64   `json:"minute"` // epoch minutes
+	Requests     int     `json:"requests"`
+	Errors       int     `json:"errors"`
+	InputTokens  int     `json:"inputTokens"`
+	OutputTokens int     `json:"outputTokens"`
+	Cost         float64 `json:"cost"` // US dollars
 }
 
 const (
@@ -93,6 +98,7 @@ func (s *Stats) RecordRequest(e RequestEntry) {
 	}
 	b.InputTokens += e.InputTokens
 	b.OutputTokens += e.OutputTokens
+	b.Cost += e.CostUSD
 }
 
 func (s *Stats) Event(level, kind, message string) {
@@ -129,6 +135,7 @@ func (s *Stats) Series(step int) []Bucket {
 				agg.Errors += b.Errors
 				agg.InputTokens += b.InputTokens
 				agg.OutputTokens += b.OutputTokens
+				agg.Cost += b.Cost
 			}
 		}
 		out = append(out, agg)

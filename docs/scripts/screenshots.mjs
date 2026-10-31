@@ -22,6 +22,7 @@ const shots = [
   ['keys', '#/keys'],
   ['key-details', '#/keys', `document.querySelector('tbody tr button')?.click()`],
   ['create-key', '#/keys', `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Create key')?.click()`],
+  ['pricing', '#/pricing'],
   ['activity', '#/activity'],
 ]
 

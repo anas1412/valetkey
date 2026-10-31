@@ -18,6 +18,7 @@ var (
 	GroupGVR     = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "groups"}
 	ProxyKeyGVR  = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "proxykeys"}
 	SecretGVR    = schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
+	ConfigMapGVR = schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
 	NamespaceGVR = schema.GroupVersionResource{Version: "v1", Resource: "namespaces"}
 )
 
@@ -43,6 +44,43 @@ type Status struct {
 	Message    string      `json:"message,omitempty"`
 	KeyHash    string      `json:"keyHash,omitempty"`
 	SecretName string      `json:"secretName,omitempty"`
+	// Spend is the current budget period's spend (ProxyKey and Group with a budget).
+	Spend *Spend `json:"spend,omitempty"`
+}
+
+// Spend is persisted in status so budgets survive restarts. USD is an exact decimal.
+type Spend struct {
+	PeriodStart string `json:"periodStart"`
+	USD         string `json:"usd"`
+	Requests    int64  `json:"requests"`
+	Unpriced    int64  `json:"unpriced,omitempty"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
+// Budget caps spend per period. USD is a decimal string ("20", "0.50").
+type Budget struct {
+	USD      string `json:"usd"`
+	Period   string `json:"period,omitempty"`   // daily | weekly | monthly (default)
+	Timezone string `json:"timezone,omitempty"` // IANA name; default UTC
+}
+
+// ChannelPricing says how a channel's requests are priced.
+type ChannelPricing struct {
+	// Provider is the price catalogue provider (models.dev id, e.g. "deepseek").
+	// Empty: guessed from baseURL.
+	Provider string `json:"provider,omitempty"`
+	// Models are per-model prices that win over the catalogue (negotiated rates,
+	// self-hosted models, Azure deployment names).
+	Models map[string]ModelPrice `json:"models,omitempty"`
+}
+
+// ModelPrice is in dollars per million tokens, as decimal strings.
+type ModelPrice struct {
+	Input        string `json:"input"`
+	Output       string `json:"output"`
+	CacheRead    string `json:"cacheRead,omitempty"`
+	CacheWrite   string `json:"cacheWrite,omitempty"`
+	CacheWrite1h string `json:"cacheWrite1h,omitempty"`
 }
 
 type SecretRef struct {
@@ -68,6 +106,7 @@ type ChannelSpec struct {
 	ProxyURL      string            `json:"proxyURL,omitempty"`
 	SkipTLSVerify bool              `json:"skipTLSVerify,omitempty"`
 	ModelMapping  map[string]string `json:"modelMapping,omitempty"`
+	Pricing       *ChannelPricing   `json:"pricing,omitempty"`
 }
 
 type Channel struct {
@@ -92,6 +131,7 @@ type GroupSpec struct {
 	ChannelRefs []string `json:"channelRefs"`
 	RPMRatio    float64  `json:"rpmRatio,omitempty"`
 	TPMRatio    float64  `json:"tpmRatio,omitempty"`
+	Budget      *Budget  `json:"budget,omitempty"`
 }
 
 type TenantGroup struct {
@@ -109,6 +149,7 @@ type ProxyKeySpec struct {
 	Subnets []string `json:"subnets,omitempty"`
 	RPM     int      `json:"rpm,omitempty"`
 	TPM     int      `json:"tpm,omitempty"`
+	Budget  *Budget  `json:"budget,omitempty"`
 }
 
 type ProxyKey struct {

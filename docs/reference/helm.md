@@ -24,6 +24,7 @@ helm show crds oci://ghcr.io/anas1412/charts/valetkey --version <new> | kubectl 
 | `service.proxyPort` | `8000` | |
 | `service.metricsPort` | `8081` | |
 | `resources` | 20m / 32Mi requests, 256Mi limit | |
+| `pricing.refreshInterval` | `6h` | How often live prices are fetched; `"off"` uses the built-in prices only. See [Budgets & costs](/guide/budgets) |
 | `prometheus.url` | `""` | Prometheus that scrapes Valetkey. The dashboard then reads usage (24 h, 7 d, 30 d) from it, see [Usage history](/guide/usage-history) |
 | `grafanaDashboard.enabled` | `false` | Create a ConfigMap with the Grafana dashboard for Grafana's sidecar |
 | `grafanaDashboard.namespace` | release namespace | Namespace your Grafana watches |
@@ -37,6 +38,15 @@ helm show crds oci://ghcr.io/anas1412/charts/valetkey --version <new> | kubectl 
 | `podAnnotations`, `nodeSelector`, `tolerations`, `affinity` | empty | Standard pod settings |
 
 The release runs one replica on purpose: see [Limits](/guide/limits#scaling).
+
+## Upgrading
+
+Helm installs the CRDs on the first install and never updates them. Apply the new version's CRDs before upgrading, so new fields (like budgets) are kept:
+
+```bash
+kubectl apply --server-side -f https://raw.githubusercontent.com/anas1412/valetkey/v0.2.0/charts/valetkey/crds/crds.yaml
+helm upgrade valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 -n valetkey-system
+```
 
 ## Without Helm
 

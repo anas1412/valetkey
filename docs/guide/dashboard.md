@@ -38,15 +38,21 @@ Every upstream API, its models, priority and status. **Test** checks that the pr
 
 ## Tenants
 
-One row per tenant namespace: its providers, number of keys, limit multipliers and status.
+One row per tenant namespace: its providers, number of keys, spend against its budget, limit multipliers and status.
 
 <Shot name="tenants" alt="Tenants list" />
 
 ## API keys
 
-All keys across tenants, with their rules, request count and when they were last used. Expand a key to show or copy it and get ready-to-paste examples for cURL, Python, TypeScript and Kubernetes.
+All keys across tenants, with their rules, request count, spend against their budget and when they were last used. Expand a key to show or copy it and get ready-to-paste examples for cURL, Python, TypeScript and Kubernetes.
 
 <Shot name="key-details" alt="An expanded API key with usage snippets" />
+
+## Pricing
+
+What each provider model costs right now, per million tokens: input, output, cache reads and writes, whether DeepSeek models are at peak price and when that changes, and which sources the prices came from. See [Budgets & costs](/guide/budgets).
+
+<Shot name="pricing" alt="Pricing page" />
 
 ## Activity
 

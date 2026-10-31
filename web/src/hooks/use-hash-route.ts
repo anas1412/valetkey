@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export const ROUTES = ['overview', 'providers', 'tenants', 'keys', 'activity'] as const
+export const ROUTES = ['overview', 'providers', 'tenants', 'keys', 'pricing', 'activity'] as const
 export type Route = (typeof ROUTES)[number] | 'not-found'
 
 function read(): Route {

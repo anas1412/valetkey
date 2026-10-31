@@ -4,6 +4,7 @@ import { Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, I
 import { Combobox } from '@/components/ui/combobox'
 import { LiquidToggle } from '@/components/ui/liquid-toggle'
 import { Button } from '@/components/ui/button'
+import { BudgetFields, fromBudgetDraft, toBudgetDraft, validBudgetAmount, type BudgetDraft } from '@/components/BudgetFields'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import type { Channel, Group } from '@/lib/types'
@@ -13,6 +14,7 @@ interface Draft {
   channels: string[]
   rpmRatio: string
   tpmRatio: string
+  budget: BudgetDraft
   enabled: boolean
 }
 
@@ -22,6 +24,7 @@ function toDraft(g?: Group): Draft {
     channels: g?.spec.channelRefs ?? [],
     rpmRatio: String(g?.spec.rpmRatio ?? 1),
     tpmRatio: String(g?.spec.tpmRatio ?? 1),
+    budget: toBudgetDraft(g?.spec.budget),
     enabled: (g?.spec.status ?? 'Enabled') === 'Enabled',
   }
 }
@@ -56,11 +59,13 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
     e.preventDefault()
     if (!d.name) return setError('Pick the namespace this tenant uses')
     if (!d.channels.length) return setError('Pick at least one provider')
+    if (!validBudgetAmount(d.budget.usd)) return setError('Budget must be a dollar amount, e.g. 200 or 0.50')
     const spec = {
       channelRefs: d.channels,
       status: d.enabled ? 'Enabled' as const : 'Disabled' as const,
       rpmRatio: Number(d.rpmRatio) || 1,
       tpmRatio: Number(d.tpmRatio) || 1,
+      budget: fromBudgetDraft(d.budget),
     }
     setBusy(true)
     setError(undefined)
@@ -144,6 +149,9 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
               </FormItem>
             </div>
             <p className="-mt-3 text-xs text-text-muted">Multiplies each key's own per-minute limits. 1 = unchanged, 2 = double.</p>
+
+            <BudgetFields value={d.budget} onChange={(b) => set('budget', b)}
+              hint="For all of the tenant's keys together. Requests that might go over it are refused (429)." />
 
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>

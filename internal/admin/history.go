@@ -28,6 +28,7 @@ type usageHistory struct {
 	Series       []stats.Bucket `json:"series"`
 	StepMinutes  int            `json:"stepMinutes"`
 	ChannelShare map[string]int `json:"channelShare"`
+	Cost         float64        `json:"cost"` // US dollars over the range
 }
 
 const errorStatus = `status_code=~"[45].."`
@@ -60,6 +61,14 @@ func promHistory(ctx context.Context, c *promql.Client, rangeName string) (usage
 		h.Totals[name] = sumSamples(samples)
 	}
 
+	cost, err := c.Query(ctx, fmt.Sprintf(`sum(increase(valetkey_cost_usd_total[%s]))`, window), now)
+	if err != nil {
+		return h, err
+	}
+	for _, s := range cost {
+		h.Cost += s.Value
+	}
+
 	share, err := c.Query(ctx, fmt.Sprintf(`sum by (channel) (increase(valetkey_requests_total{channel!="none"}[%s]))`, window), now)
 	if err != nil {
 		return h, err
@@ -77,11 +86,13 @@ func promHistory(ctx context.Context, c *promql.Client, rangeName string) (usage
 	for t := start; !t.After(end); t = t.Add(r.step) {
 		buckets[t.Unix()] = &stats.Bucket{Minute: t.Unix() / 60}
 	}
-	series := map[string]func(*stats.Bucket, int){
-		fmt.Sprintf(`sum(increase(valetkey_requests_total[%s]))`, step):                  func(b *stats.Bucket, n int) { b.Requests = n },
-		fmt.Sprintf(`sum(increase(valetkey_requests_total{%s}[%s]))`, errorStatus, step): func(b *stats.Bucket, n int) { b.Errors = n },
-		fmt.Sprintf(`sum(increase(valetkey_tokens_total{type="input"}[%s]))`, step):      func(b *stats.Bucket, n int) { b.InputTokens = n },
-		fmt.Sprintf(`sum(increase(valetkey_tokens_total{type="output"}[%s]))`, step):     func(b *stats.Bucket, n int) { b.OutputTokens = n },
+	round := func(v float64) int { return int(math.Round(v)) }
+	series := map[string]func(*stats.Bucket, float64){
+		fmt.Sprintf(`sum(increase(valetkey_requests_total[%s]))`, step):                  func(b *stats.Bucket, v float64) { b.Requests = round(v) },
+		fmt.Sprintf(`sum(increase(valetkey_requests_total{%s}[%s]))`, errorStatus, step): func(b *stats.Bucket, v float64) { b.Errors = round(v) },
+		fmt.Sprintf(`sum(increase(valetkey_tokens_total{type="input"}[%s]))`, step):      func(b *stats.Bucket, v float64) { b.InputTokens = round(v) },
+		fmt.Sprintf(`sum(increase(valetkey_tokens_total{type="output"}[%s]))`, step):     func(b *stats.Bucket, v float64) { b.OutputTokens = round(v) },
+		fmt.Sprintf(`sum(increase(valetkey_cost_usd_total[%s]))`, step):                  func(b *stats.Bucket, v float64) { b.Cost = v },
 	}
 	for q, set := range series {
 		res, err := c.QueryRange(ctx, q, start, end, r.step)
@@ -91,7 +102,7 @@ func promHistory(ctx context.Context, c *promql.Client, rangeName string) (usage
 		for _, s := range res {
 			for _, p := range s.Points {
 				if b := buckets[p.Time.Unix()]; b != nil {
-					set(b, int(math.Round(p.Value)))
+					set(b, p.Value)
 				}
 			}
 		}
@@ -124,12 +135,14 @@ func memoryHistory(st *stats.Stats) usageHistory {
 		t.Errors += b.Errors
 		t.InputTokens += b.InputTokens
 		t.OutputTokens += b.OutputTokens
+		t.Cost += b.Cost
 	}
 	return usageHistory{
 		Totals:       map[string]int{"requests": t.Requests, "errors": t.Errors, "inputTokens": t.InputTokens, "outputTokens": t.OutputTokens},
 		Series:       series,
 		StepMinutes:  seriesStepMinutes,
 		ChannelShare: st.ChannelShare(),
+		Cost:         t.Cost,
 	}
 }
 

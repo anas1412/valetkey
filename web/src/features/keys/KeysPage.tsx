@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmSheet } from '@/components/ConfirmSheet'
+import { SpendBar } from '@/components/SpendBar'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/utils'
@@ -74,11 +75,13 @@ export function KeysPage() {
     {
       id: 'limits', header: 'Limits', priority: 'low',
       accessorFn: (k) => [k.spec.models?.length ? `${k.spec.models.length} model(s)` : '', k.spec.subnets?.length ? 'IP list' : '',
-        k.spec.rpm ? `${k.spec.rpm} rpm` : '', k.spec.tpm ? `${formatCount(k.spec.tpm)} tpm` : ''].filter(Boolean).join(' · ') || 'none',
+        k.spec.rpm ? `${k.spec.rpm} rpm` : '', k.spec.tpm ? `${formatCount(k.spec.tpm)} tpm` : ''].filter(Boolean).join(', ') || 'none',
       cell: ({ value }) => <span className="text-text-secondary">{value}</span>,
     },
     { id: 'requests', header: keys.data?.[0]?.requestsWindow === '30d' ? 'Requests (30d)' : 'Requests', accessorKey: 'requests', sortable: true, align: 'right', priority: 'medium',
       cell: ({ value }) => <span className="tabular-nums">{formatCount(value)}</span> },
+    { id: 'spend', header: 'Spent', accessorFn: (k) => k.spend?.spent ?? 0, sortable: true, priority: 'medium',
+      cell: ({ row }) => <SpendBar spend={row.spend} /> },
     { id: 'lastUsed', header: 'Last used', accessorFn: (k) => k.lastUsed ?? 0, sortable: true, priority: 'low',
       cell: ({ row }) => <span className="text-text-secondary">{timeAgo(row.lastUsed)}</span> },
     {

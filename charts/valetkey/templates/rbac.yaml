@@ -55,6 +55,14 @@ rules:
   - apiGroups: ['']
     resources: [secrets]
     verbs: [get, list, watch, create, update, delete]
+  # The last fetched price list, kept so restarts don't depend on the internet.
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [valetkey-pricing]
+    verbs: [get, update]
+  - apiGroups: ['']
+    resources: [configmaps]
+    verbs: [create]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

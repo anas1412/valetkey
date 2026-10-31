@@ -13,6 +13,30 @@ export interface ChannelSpec {
   proxyURL?: string
   skipTLSVerify?: boolean
   modelMapping?: Record<string, string>
+  /** Set in YAML; the dashboard keeps it as is. */
+  pricing?: { provider?: string; models?: Record<string, Record<string, string>> }
+}
+
+export type BudgetPeriod = 'daily' | 'weekly' | 'monthly'
+
+export interface Budget {
+  /** US dollars per period, as a decimal string ("20", "0.50"). */
+  usd: string
+  period?: BudgetPeriod
+  timezone?: string
+}
+
+/** Spend in the current budget period (or the current month without a budget). */
+export interface Spend {
+  spent: number
+  exact: string
+  reserved: number
+  budget?: number
+  period: BudgetPeriod
+  periodStart: string
+  resets?: string
+  requests: number
+  unpriced?: number
 }
 
 export interface Channel {
@@ -27,6 +51,7 @@ export interface GroupSpec {
   channelRefs: string[]
   rpmRatio?: number
   tpmRatio?: number
+  budget?: Budget
 }
 
 export interface Group {
@@ -35,6 +60,7 @@ export interface Group {
   ready: boolean
   message?: string
   keys: number
+  spend?: Spend
 }
 
 export interface ProxyKeySpec {
@@ -43,6 +69,7 @@ export interface ProxyKeySpec {
   subnets?: string[]
   rpm?: number
   tpm?: number
+  budget?: Budget
 }
 
 export interface ProxyKey {
@@ -56,6 +83,7 @@ export interface ProxyKey {
   /** "30d" when requests come from Prometheus, "pod" when counted since the pod started. */
   requestsWindow: '30d' | 'pod'
   lastUsed?: number
+  spend?: Spend
 }
 
 export interface MinuteBucket {
@@ -64,6 +92,7 @@ export interface MinuteBucket {
   errors: number
   inputTokens: number
   outputTokens: number
+  cost: number
 }
 
 export type HistoryRange = '24h' | '7d' | '30d'
@@ -78,9 +107,11 @@ export interface Overview {
   warning?: string
   prometheusConfig: boolean
   stepMinutes: number
-  totals: Omit<MinuteBucket, 'minute'>
+  totals: Omit<MinuteBucket, 'minute' | 'cost'>
   series: MinuteBucket[]
   channelShare: Record<string, number>
+  /** US dollars spent over the range. */
+  cost: number
   counts: { channels: number; groups: number; keys: number; activeKeys: number }
   channels: Array<{ name: string; type: ChannelType; enabled: boolean; ready: boolean; message?: string }>
 }
@@ -97,6 +128,42 @@ export interface RequestEntry {
   outputTokens: number
   latencyMs: number
   error?: string
+  costUSD: number
+  /** "estimated" (worst case charged, no usage reported), "unpriced" or "no usage". */
+  costNote?: 'estimated' | 'unpriced' | 'no usage'
+}
+
+export interface PriceSource {
+  name: string
+  url: string
+  ok: boolean
+  note?: string
+  error?: string
+}
+
+/** What one provider model costs right now, in dollars per million tokens. */
+export interface ModelPrice {
+  channel: string
+  model: string
+  provider?: string
+  known: boolean
+  source?: string
+  warning?: string
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite5m: number
+  cacheWrite1h: number
+  period?: 'peak' | 'off-peak'
+  nextChange?: string
+  offPeakInput?: number
+}
+
+export interface Pricing {
+  fetchedAt?: string
+  refresh: string
+  sources: PriceSource[]
+  prices: ModelPrice[]
 }
 
 export interface OperatorEvent {

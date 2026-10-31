@@ -37,6 +37,7 @@ export default defineConfig({
           { text: 'API keys', link: '/guide/api-keys' },
           { text: 'Using a key in your app', link: '/guide/using-keys' },
           { text: 'Limits & access rules', link: '/guide/limits' },
+          { text: 'Budgets & costs', link: '/guide/budgets' },
         ],
       },
       {

@@ -1,4 +1,5 @@
-# Two fake providers (one OpenAI-style, one Anthropic-style) and the Channels that use them.
+# Three fake providers (OpenAI-style, Anthropic-style, DeepSeek-style) and the Channels that use
+# them. spec.pricing.provider prices them like the real provider, with live prices.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -58,6 +59,41 @@ spec:
   selector: { app: fake-anthropic }
   ports: [{ port: 80, targetPort: 8080 }]
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fake-deepseek
+  namespace: fake-llm
+spec:
+  selector: { matchLabels: { app: fake-deepseek } }
+  template:
+    metadata: { labels: { app: fake-deepseek } }
+    spec:
+      containers:
+        - name: provider
+          image: localhost/valetkey-fakeprovider:dev
+          imagePullPolicy: Never
+          args: [serve]
+          env:
+            - { name: MODELS, value: "deepseek-v4-pro,deepseek-flash" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fake-deepseek
+  namespace: fake-llm
+spec:
+  selector: { app: fake-deepseek }
+  ports: [{ port: 80, targetPort: 8080 }]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: deepseek-key
+  namespace: valetkey-system
+stringData:
+  apiKey: sk-demo-not-a-real-key
+---
 apiVersion: v1
 kind: Secret
 metadata:
@@ -85,6 +121,7 @@ spec:
   keySecretRef: { name: openai-key }
   models: [gpt-4o, gpt-4o-mini]
   priority: 10
+  pricing: { provider: openai }
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: Channel
@@ -97,3 +134,17 @@ spec:
   keySecretRef: { name: anthropic-key }
   models: [claude-sonnet-4-5, claude-haiku-4-5]
   priority: 10
+  pricing: { provider: anthropic }
+---
+apiVersion: valetkey.dev/v1alpha1
+kind: Channel
+metadata:
+  name: deepseek
+  namespace: valetkey-system
+spec:
+  type: openai
+  baseURL: http://fake-deepseek.fake-llm.svc
+  keySecretRef: { name: deepseek-key }
+  models: [deepseek-v4-pro, deepseek-flash]
+  priority: 10
+  pricing: { provider: deepseek } # peak and off-peak hours apply

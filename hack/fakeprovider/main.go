@@ -70,6 +70,7 @@ func serve() {
 			return
 		}
 		in, out := 20+rand.IntN(400), 10+rand.IntN(300)
+		usage := openAIUsage(in, out)
 		if req.Stream {
 			w.Header().Set("Content-Type", "text/event-stream")
 			for _, word := range strings.Fields(reply) {
@@ -77,13 +78,13 @@ func serve() {
 					"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"content": word + " "}}}}))
 			}
 			fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", mustJSON(map[string]any{"object": "chat.completion.chunk", "model": req.Model,
-				"choices": []any{}, "usage": map[string]int{"prompt_tokens": in, "completion_tokens": out, "total_tokens": in + out}}))
+				"choices": []any{}, "usage": usage}))
 			return
 		}
 		writeJSON(w, 200, map[string]any{
 			"id": fmt.Sprintf("chatcmpl-%d", rand.Int64()), "object": "chat.completion", "created": time.Now().Unix(), "model": req.Model,
 			"choices": []any{map[string]any{"index": 0, "finish_reason": "stop", "message": map[string]any{"role": "assistant", "content": reply}}},
-			"usage":   map[string]int{"prompt_tokens": in, "completion_tokens": out, "total_tokens": in + out},
+			"usage":   usage,
 		})
 	})
 	mux.HandleFunc("POST /v1/messages", func(w http.ResponseWriter, r *http.Request) {
@@ -96,13 +97,26 @@ func serve() {
 		writeJSON(w, 200, map[string]any{
 			"id": fmt.Sprintf("msg_%d", rand.Int64()), "type": "message", "role": "assistant", "model": req.Model,
 			"content": []any{map[string]any{"type": "text", "text": reply}}, "stop_reason": "end_turn",
-			"usage": map[string]int{"input_tokens": 20 + rand.IntN(400), "output_tokens": 10 + rand.IntN(300)},
+			"usage": map[string]int{"input_tokens": 20 + rand.IntN(400), "output_tokens": 10 + rand.IntN(300),
+				"cache_read_input_tokens": rand.IntN(2) * rand.IntN(800), "cache_creation_input_tokens": rand.IntN(4) / 3 * rand.IntN(400)},
 		})
 	})
 
 	addr := ":" + env("PORT", "8080")
 	log.Printf("fake provider on %s, models %v", addr, models)
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+// openAIUsage reports usage like OpenAI and DeepSeek do: part of the prompt from the
+// provider's cache, part of the output spent on reasoning.
+func openAIUsage(in, out int) map[string]any {
+	cached := rand.IntN(2) * rand.IntN(in)
+	return map[string]any{
+		"prompt_tokens": in, "completion_tokens": out, "total_tokens": in + out,
+		"prompt_tokens_details":     map[string]int{"cached_tokens": cached},
+		"completion_tokens_details": map[string]int{"reasoning_tokens": rand.IntN(2) * rand.IntN(out)},
+		"prompt_cache_hit_tokens":   cached, "prompt_cache_miss_tokens": in - cached,
+	}
 }
 
 const reply = "This is a canned reply from the Valetkey demo provider."
@@ -146,11 +160,12 @@ func load() {
 	}
 	models := strings.Split(env("MODELS", "gpt-4o-mini"), ",")
 	interval := envFloat("INTERVAL", 2)
+	maxTokens := int(envFloat("MAX_TOKENS", 512))
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	for {
 		model := models[rand.IntN(len(models))]
-		body := mustJSON(map[string]any{"model": model, "messages": []any{map[string]any{"role": "user", "content": "Summarize invoice " + strconv.Itoa(rand.IntN(10000))}}})
+		body := mustJSON(map[string]any{"model": model, "max_tokens": maxTokens, "messages": []any{map[string]any{"role": "user", "content": "Summarize invoice " + strconv.Itoa(rand.IntN(10000))}}})
 		req, _ := http.NewRequest("POST", endpoint+"/v1/chat/completions", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+key)
 		req.Header.Set("Content-Type", "application/json")

@@ -3,6 +3,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"github.com/anas1412/valetkey/internal/budget"
 	"log/slog"
 	"strings"
 
@@ -64,6 +65,14 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		}
 	}
 
+	limit, err := budget.Parse(pk.Spec.Budget)
+	if err != nil {
+		return notReady("InvalidBudget", err.Error())
+	}
+	if c.budgets != nil {
+		c.budgets.Restore(budget.KeyScope(ns, name), limit, pk.Status.Spend)
+	}
+
 	// Mint a virtual key unless the Secret already holds the one recorded in status.
 	secretName := SecretName(name)
 	keyHash := pk.Status.KeyHash
@@ -94,7 +103,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	}
 	c.registry.UpsertRoute(uid, registry.Route{
 		KeyHash: keyHash, Group: group, Namespace: ns, ProxyKeyName: name,
-		Models: models, AllowList: allow, RPM: pk.Spec.RPM, TPM: pk.Spec.TPM,
+		Models: models, AllowList: allow, RPM: pk.Spec.RPM, TPM: pk.Spec.TPM, Budget: limit,
 	})
 	c.refreshKeyGauge()
 

@@ -4,7 +4,9 @@ package reconciler
 
 import (
 	"context"
+	"github.com/anas1412/valetkey/internal/budget"
 	"log/slog"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +34,7 @@ type Controller struct {
 	registry *registry.Registry
 	metrics  *metrics.Metrics
 	stats    *stats.Stats
+	budgets  *budget.Tracker // optional
 
 	queue     workqueue.TypedRateLimitingInterface[string]
 	proxyKeys cache.GenericLister
@@ -41,9 +44,9 @@ type Controller struct {
 	problems  map[string]string // channel → last reported key problem; guarded by chanMu
 }
 
-func New(cfg config.Config, k *kube.Client, reg *registry.Registry, m *metrics.Metrics, st *stats.Stats) *Controller {
+func New(cfg config.Config, k *kube.Client, reg *registry.Registry, m *metrics.Metrics, st *stats.Stats, b *budget.Tracker) *Controller {
 	return &Controller{
-		cfg: cfg, kube: k, registry: reg, metrics: m, stats: st,
+		cfg: cfg, kube: k, registry: reg, metrics: m, stats: st, budgets: b,
 		queue:    workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]()),
 		problems: map[string]string{},
 	}
@@ -162,8 +165,13 @@ func (c *Controller) worker(ctx context.Context) {
 // handler builds informer callbacks; deletes may arrive as tombstones.
 func handler(onChange, onDelete func(any)) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc:    onChange,
-		UpdateFunc: func(_, obj any) { onChange(obj) },
+		AddFunc: onChange,
+		UpdateFunc: func(old, obj any) {
+			if spendOnly(old, obj) {
+				return // our own budget bookkeeping, nothing to reconcile
+			}
+			onChange(obj)
+		},
 		DeleteFunc: func(obj any) {
 			if t, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 				obj = t.Obj
@@ -171,4 +179,21 @@ func handler(onChange, onDelete func(any)) cache.ResourceEventHandlerFuncs {
 			onDelete(obj)
 		},
 	}
+}
+
+// spendOnly reports an update that changed nothing but status.spend.
+func spendOnly(old, obj any) bool {
+	o, ok1 := old.(*unstructured.Unstructured)
+	n, ok2 := obj.(*unstructured.Unstructured)
+	if !ok1 || !ok2 || o.GetGeneration() != n.GetGeneration() {
+		return false
+	}
+	os, _, _ := unstructured.NestedMap(o.Object, "status")
+	ns, _, _ := unstructured.NestedMap(n.Object, "status")
+	if reflect.DeepEqual(os["spend"], ns["spend"]) {
+		return false
+	}
+	delete(os, "spend")
+	delete(ns, "spend")
+	return reflect.DeepEqual(os, ns) && reflect.DeepEqual(o.Object["spec"], n.Object["spec"])
 }

@@ -5,18 +5,44 @@ import (
 	"strings"
 )
 
-// Usage extracts token counts from OpenAI and Anthropic responses, buffered or SSE.
-// Counts are cumulative, so the largest value seen wins.
+// Usage extracts token counts from OpenAI, DeepSeek and Anthropic responses, buffered
+// or SSE, split the way providers bill them. Counts are cumulative, so the largest
+// value seen for each field wins.
 type Usage struct {
-	Input, Output int
-	partial       string
+	Input        int // input tokens billed at the normal input price (no cache hit or write)
+	CacheRead    int // input tokens served from the provider's prompt cache
+	CacheWrite5m int // input tokens written to the cache (Anthropic 5 minute TTL)
+	CacheWrite1h int // input tokens written to the cache (Anthropic 1 hour TTL)
+	Output       int // all output tokens, reasoning included
+	Reasoning    int // the reasoning share of Output, when the provider reports it
+	partial      string
 }
 
+// InputTotal is every input token, whatever its price.
+func (u *Usage) InputTotal() int { return u.Input + u.CacheRead + u.CacheWrite5m + u.CacheWrite1h }
+
 type usageFields struct {
-	PromptTokens     *int `json:"prompt_tokens"`
-	CompletionTokens *int `json:"completion_tokens"`
-	InputTokens      *int `json:"input_tokens"`
-	OutputTokens     *int `json:"output_tokens"`
+	// OpenAI and OpenAI-compatible (prompt_tokens includes cached tokens)
+	PromptTokens        *int `json:"prompt_tokens"`
+	CompletionTokens    *int `json:"completion_tokens"`
+	PromptTokensDetails *struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
+	CompletionTokensDetails *struct {
+		ReasoningTokens int `json:"reasoning_tokens"`
+	} `json:"completion_tokens_details"`
+	// DeepSeek
+	PromptCacheHitTokens  *int `json:"prompt_cache_hit_tokens"`
+	PromptCacheMissTokens *int `json:"prompt_cache_miss_tokens"`
+	// Anthropic (input_tokens excludes cache reads and writes)
+	InputTokens              *int `json:"input_tokens"`
+	OutputTokens             *int `json:"output_tokens"`
+	CacheReadInputTokens     int  `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int  `json:"cache_creation_input_tokens"`
+	CacheCreation            *struct {
+		Ephemeral5m int `json:"ephemeral_5m_input_tokens"`
+		Ephemeral1h int `json:"ephemeral_1h_input_tokens"`
+	} `json:"cache_creation"`
 }
 
 type usageCarrier struct {
@@ -62,16 +88,49 @@ func (u *Usage) read(b []byte) {
 		return
 	}
 	for _, f := range []*usageFields{c.Usage, msgUsage(c)} {
-		if f == nil {
-			continue
-		}
-		if v := first(f.PromptTokens, f.InputTokens); v > u.Input {
-			u.Input = v
-		}
-		if v := first(f.CompletionTokens, f.OutputTokens); v > u.Output {
-			u.Output = v
+		if f != nil {
+			u.merge(f)
 		}
 	}
+}
+
+func (u *Usage) merge(f *usageFields) {
+	var n Usage
+	switch {
+	case f.PromptTokens != nil:
+		cached := 0
+		if f.PromptTokensDetails != nil {
+			cached = f.PromptTokensDetails.CachedTokens
+		}
+		if f.PromptCacheHitTokens != nil {
+			cached = *f.PromptCacheHitTokens
+		}
+		n.CacheRead = cached
+		n.Input = max(*f.PromptTokens-cached, 0)
+		if f.PromptCacheMissTokens != nil {
+			n.Input = *f.PromptCacheMissTokens
+		}
+	default:
+		if f.InputTokens != nil {
+			n.Input = *f.InputTokens
+		}
+		n.CacheRead = f.CacheReadInputTokens
+		if f.CacheCreation != nil && f.CacheCreation.Ephemeral5m+f.CacheCreation.Ephemeral1h > 0 {
+			n.CacheWrite5m, n.CacheWrite1h = f.CacheCreation.Ephemeral5m, f.CacheCreation.Ephemeral1h
+		} else {
+			n.CacheWrite5m = f.CacheCreationInputTokens
+		}
+	}
+	n.Output = first(f.CompletionTokens, f.OutputTokens)
+	if f.CompletionTokensDetails != nil {
+		n.Reasoning = f.CompletionTokensDetails.ReasoningTokens
+	}
+	u.Input = max(u.Input, n.Input)
+	u.CacheRead = max(u.CacheRead, n.CacheRead)
+	u.CacheWrite5m = max(u.CacheWrite5m, n.CacheWrite5m)
+	u.CacheWrite1h = max(u.CacheWrite1h, n.CacheWrite1h)
+	u.Output = max(u.Output, n.Output)
+	u.Reasoning = max(u.Reasoning, n.Reasoning)
 }
 
 func msgUsage(c usageCarrier) *usageFields {

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"github.com/anas1412/valetkey/internal/pricing"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +52,7 @@ func (a *API) getChannel(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) createChannel(w http.ResponseWriter, r *http.Request) {
 	var in channelInput
-	if !readJSON(w, r, &in) || !validName(w, in.Name, "channel name") {
+	if !readJSON(w, r, &in) || !validName(w, in.Name, "channel name") || !validPricing(w, in.Spec.Pricing) {
 		return
 	}
 	if !a.storeKey(w, r, in.Name, &in) {
@@ -73,18 +74,24 @@ func (a *API) createChannel(w http.ResponseWriter, r *http.Request) {
 func (a *API) updateChannel(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	var in channelInput
-	if !readJSON(w, r, &in) {
+	if !readJSON(w, r, &in) || !validPricing(w, in.Spec.Pricing) {
 		return
 	}
-	if in.Spec.KeySecretRef.Name == "" {
-		// Keep the live object's key reference when the dashboard doesn't send one.
+	if in.Spec.KeySecretRef.Name == "" || in.Spec.Pricing == nil {
+		// Keep the live object's key reference and price overrides (set in YAML)
+		// when the dashboard doesn't send them.
 		cur, err := a.Kube.Get(r.Context(), types.ChannelGVR, a.Config.OperatorNamespace, name)
 		if err != nil {
 			writeKubeError(w, err)
 			return
 		}
 		if ch, ok := types.FromUnstructured[types.Channel](cur); ok {
-			in.Spec.KeySecretRef = ch.Spec.KeySecretRef
+			if in.Spec.KeySecretRef.Name == "" {
+				in.Spec.KeySecretRef = ch.Spec.KeySecretRef
+			}
+			if in.Spec.Pricing == nil {
+				in.Spec.Pricing = ch.Spec.Pricing
+			}
 		}
 	}
 	if !a.storeKey(w, r, name, &in) {
@@ -157,4 +164,12 @@ func (a *API) testChannel(w http.ResponseWriter, r *http.Request) {
 		out["message"] = fmt.Sprintf("reachable, key accepted, %d models", len(res.Models))
 	}
 	writeJSON(w, 200, out)
+}
+
+func validPricing(w http.ResponseWriter, p *types.ChannelPricing) bool {
+	if err := pricing.ValidateOverrides(p); err != nil {
+		writeMessage(w, http.StatusBadRequest, err.Error())
+		return false
+	}
+	return true
 }

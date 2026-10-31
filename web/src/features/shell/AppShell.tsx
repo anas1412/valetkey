@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { LayoutDashboard, Server, Users, KeyRound, Activity, Menu } from 'lucide-react'
+import { LayoutDashboard, Server, Users, KeyRound, CircleDollarSign, Activity, Menu } from 'lucide-react'
 import { Sidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/Logo'
@@ -19,6 +19,7 @@ const SECTIONS = [
       { id: 'providers', label: 'Providers', icon: <Server className="size-4" /> },
       { id: 'tenants', label: 'Tenants', icon: <Users className="size-4" /> },
       { id: 'keys', label: 'API keys', icon: <KeyRound className="size-4" /> },
+      { id: 'pricing', label: 'Pricing', icon: <CircleDollarSign className="size-4" /> },
     ],
   },
 ]

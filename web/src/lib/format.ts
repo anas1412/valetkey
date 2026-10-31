@@ -27,3 +27,20 @@ export function clockTime(ms: number): string {
 export function splitList(text: string): string[] {
   return text.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)
 }
+
+/** Dollars: cents above $1, more digits for small amounts so tiny costs aren't shown as $0.00. */
+export function formatUSD(n: number): string {
+  if (n === 0) return '$0'
+  const abs = Math.abs(n)
+  const digits = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6
+  return `$${n.toFixed(digits).replace(/(\.\d{2}\d*?)0+$/, '$1')}`
+}
+
+/** "in 3h", "in 2d": time until an ISO timestamp. */
+export function timeUntil(iso: string | undefined): string {
+  if (!iso) return ''
+  const s = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 1000))
+  if (s < 3600) return `in ${Math.max(1, Math.round(s / 60))}m`
+  if (s < 86400) return `in ${Math.round(s / 3600)}h`
+  return `in ${Math.round(s / 86400)}d`
+}

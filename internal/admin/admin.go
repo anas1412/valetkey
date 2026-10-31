@@ -6,6 +6,8 @@ package admin
 import (
 	"encoding/json"
 	"errors"
+	"github.com/anas1412/valetkey/internal/budget"
+	"github.com/anas1412/valetkey/internal/pricing"
 	"log/slog"
 	"net"
 	"net/http"
@@ -29,7 +31,9 @@ type API struct {
 	Controller *reconciler.Controller
 	Stats      *stats.Stats
 	// Prom is optional: when set, usage history is read from Prometheus.
-	Prom *promql.Client
+	Prom    *promql.Client
+	Prices  *pricing.Store  // optional
+	Budgets *budget.Tracker // optional
 }
 
 // Register mounts every /api/v1 route on mux.
@@ -38,6 +42,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/activity", a.guard(a.activity))
 	mux.Handle("GET /api/v1/status", a.guard(a.status))
 	mux.Handle("GET /api/v1/namespaces", a.guard(a.namespaces))
+	mux.Handle("GET /api/v1/pricing", a.guard(a.pricing))
 
 	mux.Handle("GET /api/v1/channels", a.guard(a.listChannels))
 	mux.Handle("POST /api/v1/channels", a.guard(a.createChannel))

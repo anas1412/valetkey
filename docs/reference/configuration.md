@@ -9,6 +9,7 @@ With Helm, configure Valetkey through [Helm values](/reference/helm). Underneath
 | `PROXY_PORT` | `8000` | Tenant-facing port |
 | `METRICS_PORT` | `8081` | Health checks and Prometheus metrics |
 | `ADMIN_ADDR` | `127.0.0.1:8082` | Dashboard and admin API. Loopback by default, so only `kubectl port-forward` reaches it |
+| `PRICING_REFRESH` | `6h` | How often live prices are fetched (Go duration), or `off` |
 | `PROMETHEUS_URL` | none | Prometheus to read usage history from (set by the chart's `prometheus.url`) |
 | `TRUST_PROXY` | none | Number of reverse proxies in front of Valetkey (e.g. `1` behind one ingress). The client IP for allow lists is then read from `X-Forwarded-For` |
 

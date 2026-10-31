@@ -6,6 +6,7 @@ import { LiquidToggle } from '@/components/ui/liquid-toggle'
 import { Button } from '@/components/ui/button'
 import { ModelPicker } from '@/components/ModelPicker'
 import { ChipInput, validateCIDR } from '@/components/ChipInput'
+import { BudgetFields, fromBudgetDraft, toBudgetDraft, validBudgetAmount, type BudgetDraft } from '@/components/BudgetFields'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import type { Group, ProxyKey, ProxyKeySpec } from '@/lib/types'
@@ -18,6 +19,7 @@ interface Draft {
   subnets: string[]
   rpm: string
   tpm: string
+  budget: BudgetDraft
   enabled: boolean
 }
 
@@ -30,6 +32,7 @@ function toDraft(k?: ProxyKey): Draft {
     subnets: k?.spec.subnets ?? [],
     rpm: k?.spec.rpm ? String(k.spec.rpm) : '',
     tpm: k?.spec.tpm ? String(k.spec.tpm) : '',
+    budget: toBudgetDraft(k?.spec.budget),
     enabled: (k?.spec.status ?? 'Enabled') === 'Enabled',
   }
 }
@@ -78,12 +81,14 @@ export function KeySheet({ open, apiKey, groups, onClose, onSaved }: {
     if (!d.tenant) return setError('Pick a tenant')
     if (!d.name) return setError('Name the key, e.g. after the app that uses it')
     if (!d.anyModel && !d.models.length) return setError('Select at least one model, or allow all models')
+    if (!validBudgetAmount(d.budget.usd)) return setError('Budget must be a dollar amount, e.g. 20 or 0.50')
     const spec: ProxyKeySpec = {
       status: d.enabled ? 'Enabled' : 'Disabled',
       models: d.anyModel ? [] : d.models,
       subnets: d.subnets,
       rpm: Number(d.rpm) || undefined,
       tpm: Number(d.tpm) || undefined,
+      budget: fromBudgetDraft(d.budget),
     }
     setBusy(true)
     setError(undefined)
@@ -177,6 +182,9 @@ export function KeySheet({ open, apiKey, groups, onClose, onSaved }: {
                 <FormControl><Input type="number" min={0} value={d.tpm} placeholder="unlimited" onChange={(e) => set('tpm', e.target.value)} /></FormControl>
               </FormItem>
             </div>
+
+            <BudgetFields value={d.budget} onChange={(b) => set('budget', b)}
+              hint="Requests that might go over it are refused (429). The tenant's budget applies too." />
 
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>

@@ -116,8 +116,19 @@ func (c *Client) DeleteSecret(ctx context.Context, ns, name string) error {
 	return err
 }
 
-// PatchStatus merge-patches the status subresource of a CRD object.
+// PatchStatus merge-patches the status subresource of a CRD object. Spend is left
+// alone: only PatchSpend writes it, so a stale copy never overwrites newer spend.
 func (c *Client) PatchStatus(ctx context.Context, gvr schema.GroupVersionResource, ns, name string, status types.Status) error {
+	status.Spend = nil
+	return c.patchStatus(ctx, gvr, ns, name, status)
+}
+
+// PatchSpend writes only status.spend.
+func (c *Client) PatchSpend(ctx context.Context, gvr schema.GroupVersionResource, ns, name string, spend types.Spend) error {
+	return c.patchStatus(ctx, gvr, ns, name, map[string]any{"spend": spend})
+}
+
+func (c *Client) patchStatus(ctx context.Context, gvr schema.GroupVersionResource, ns, name string, status any) error {
 	body, err := json.Marshal(map[string]any{"status": status})
 	if err != nil {
 		return err
@@ -187,4 +198,43 @@ func toAny(m map[string]string) map[string]any {
 		out[k] = v
 	}
 	return out
+}
+
+// ConfigMapStore keeps one binary value in a ConfigMap (the price cache).
+type ConfigMapStore struct {
+	Client          *Client
+	Namespace, Name string
+	Key             string
+}
+
+func (s ConfigMapStore) Load(ctx context.Context) ([]byte, error) {
+	cm, err := s.Client.Dynamic.Resource(types.ConfigMapGVR).Namespace(s.Namespace).Get(ctx, s.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	v, _, _ := unstructured.NestedString(cm.Object, "binaryData", s.Key)
+	return base64.StdEncoding.DecodeString(v)
+}
+
+func (s ConfigMapStore) Save(ctx context.Context, data []byte) error {
+	obj := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata":   map[string]any{"name": s.Name, "namespace": s.Namespace, "labels": map[string]any{"app.kubernetes.io/managed-by": ManagedBy}},
+		"binaryData": map[string]any{s.Key: base64.StdEncoding.EncodeToString(data)},
+	}}
+	res := s.Client.Dynamic.Resource(types.ConfigMapGVR).Namespace(s.Namespace)
+	existing, err := res.Get(ctx, s.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		_, err = res.Create(ctx, obj, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	obj.SetResourceVersion(existing.GetResourceVersion())
+	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
+	return err
 }

@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/anas1412/valetkey/internal/auth"
+	"github.com/anas1412/valetkey/internal/budget"
 	"github.com/anas1412/valetkey/internal/metrics"
+	"github.com/anas1412/valetkey/internal/pricing"
 	"github.com/anas1412/valetkey/internal/registry"
 	"github.com/anas1412/valetkey/internal/stats"
 )
@@ -34,6 +36,8 @@ type Relay struct {
 	Metrics    *metrics.Metrics
 	Stats      *stats.Stats
 	Transports *Transports
+	Prices     *pricing.Store  // optional: no costs without it
+	Budgets    *budget.Tracker // optional: no budgets without it
 }
 
 // result is the outcome of one relayed request, for metrics and the activity log.
@@ -45,6 +49,8 @@ type result struct {
 	latency, ttfb time.Duration
 	errorType     string
 	retries       int
+	cost          pricing.USD
+	costNote      string
 }
 
 func (rl *Relay) ChatCompletions(w http.ResponseWriter, r *http.Request) { rl.handle(w, r, OpenAI) }
@@ -107,6 +113,18 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 		return
 	}
 
+	cost, candidates, cerr := rl.prepareCost(route, api, body, len(raw), model, candidates, start)
+	if cerr != nil {
+		fail(cerr.status, cerr.kind, cerr.message, model)
+		return
+	}
+	settled := false
+	defer func() {
+		if !settled {
+			cost.release()
+		}
+	}()
+
 	lastStatus, lastType := http.StatusBadGateway, "upstream_error"
 	for attempt, entry := range candidates {
 		last := attempt == len(candidates)-1
@@ -152,10 +170,12 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 		resp.Body.Close()
 		rl.Metrics.UpstreamDuration.WithLabelValues(entry.Name(), model).Observe(time.Since(upstreamStart).Seconds())
 		if route.TPM > 0 {
-			rl.Limiter.RecordTokens(limitKey, usage.Input+usage.Output)
+			rl.Limiter.RecordTokens(limitKey, usage.InputTotal()+usage.Output)
 		}
-		res := result{status: resp.StatusCode, channel: entry.Name(), model: model, input: usage.Input, output: usage.Output,
+		res := result{status: resp.StatusCode, channel: entry.Name(), model: model, input: usage.InputTotal(), output: usage.Output,
 			latency: time.Since(start), ttfb: ttfb, retries: attempt}
+		res.cost, res.costNote = cost.settle(entry, model, resp.StatusCode, usage)
+		settled = true
 		if resp.StatusCode >= 400 {
 			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
 			res.errorType = "upstream_status"
@@ -245,10 +265,13 @@ func (rl *Relay) record(route registry.Route, r result) {
 	if r.retries > 0 {
 		m.Retries.WithLabelValues(r.channel).Add(float64(r.retries))
 	}
+	if r.cost > 0 {
+		m.Cost.WithLabelValues(r.channel, r.model, route.Group, route.Namespace, route.ProxyKeyName).Add(r.cost.Float())
+	}
 	rl.Stats.RecordRequest(stats.RequestEntry{
 		Time: time.Now().UnixMilli(), Namespace: route.Namespace, Key: route.ProxyKeyName, Group: route.Group,
 		Channel: r.channel, Model: r.model, Status: r.status, InputTokens: r.input, OutputTokens: r.output,
-		LatencyMs: r.latency.Milliseconds(), Error: r.errorType,
+		LatencyMs: r.latency.Milliseconds(), Error: r.errorType, CostUSD: r.cost.Float(), CostNote: r.costNote,
 	})
 }
 

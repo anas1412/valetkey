@@ -15,7 +15,7 @@ func TestUsageBufferedAndStreamed(t *testing.T) {
 	var u Usage
 	u.FeedJSON([]byte(`{"usage":{"prompt_tokens":12,"completion_tokens":7}}`))
 	if u.Input != 12 || u.Output != 7 {
-		t.Fatalf("openai usage = %d/%d", u.Input, u.Output)
+		t.Fatalf("openai usage = %d/%d", u.InputTotal(), u.Output)
 	}
 
 	var a Usage
@@ -29,6 +29,33 @@ func TestUsageBufferedAndStreamed(t *testing.T) {
 	a.EndSSE()
 	if a.Input != 25 || a.Output != 42 {
 		t.Fatalf("anthropic stream usage = %d/%d", a.Input, a.Output)
+	}
+}
+
+func TestUsageBillingSplit(t *testing.T) {
+	cases := []struct {
+		name, body string
+		want       Usage
+	}{
+		{"openai cached and reasoning",
+			`{"usage":{"prompt_tokens":1000,"completion_tokens":300,"prompt_tokens_details":{"cached_tokens":800},"completion_tokens_details":{"reasoning_tokens":200}}}`,
+			Usage{Input: 200, CacheRead: 800, Output: 300, Reasoning: 200}},
+		{"deepseek cache hit and miss",
+			`{"usage":{"prompt_tokens":1000,"completion_tokens":50,"prompt_cache_hit_tokens":640,"prompt_cache_miss_tokens":360}}`,
+			Usage{Input: 360, CacheRead: 640, Output: 50}},
+		{"anthropic cache read and 5m write",
+			`{"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":500,"cache_creation_input_tokens":300}}`,
+			Usage{Input: 10, CacheRead: 500, CacheWrite5m: 300, Output: 20}},
+		{"anthropic 1h write",
+			`{"usage":{"input_tokens":10,"output_tokens":20,"cache_creation_input_tokens":300,"cache_creation":{"ephemeral_5m_input_tokens":100,"ephemeral_1h_input_tokens":200}}}`,
+			Usage{Input: 10, CacheWrite5m: 100, CacheWrite1h: 200, Output: 20}},
+	}
+	for _, c := range cases {
+		var u Usage
+		u.FeedJSON([]byte(c.body))
+		if u != c.want {
+			t.Errorf("%s: got %+v, want %+v", c.name, u, c.want)
+		}
 	}
 }
 

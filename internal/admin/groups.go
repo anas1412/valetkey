@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"github.com/anas1412/valetkey/internal/budget"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +15,7 @@ type groupView struct {
 	Ready   bool            `json:"ready"`
 	Message string          `json:"message,omitempty"`
 	Keys    int             `json:"keys"`
+	Spend   *spendView      `json:"spend,omitempty"`
 }
 
 func (a *API) viewGroup(g *types.TenantGroup) groupView {
@@ -23,7 +25,8 @@ func (a *API) viewGroup(g *types.TenantGroup) groupView {
 			n++
 		}
 	}
-	return groupView{Name: g.Name, Spec: g.Spec, Ready: g.Status.Ready, Message: g.Status.Message, Keys: n}
+	return groupView{Name: g.Name, Spec: g.Spec, Ready: g.Status.Ready, Message: g.Status.Message, Keys: n,
+		Spend: a.spendOf(budget.TenantScope(g.Name), g.Spec.Budget)}
 }
 
 func (a *API) listGroups(w http.ResponseWriter, _ *http.Request) {
@@ -48,7 +51,7 @@ func (a *API) createGroup(w http.ResponseWriter, r *http.Request) {
 		Name string          `json:"name"`
 		Spec types.GroupSpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) || !validName(w, in.Name, "tenant name") {
+	if !readJSON(w, r, &in) || !validName(w, in.Name, "tenant name") || !validBudget(w, in.Spec.Budget) {
 		return
 	}
 	g := types.TenantGroup{
@@ -68,7 +71,7 @@ func (a *API) updateGroup(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Spec types.GroupSpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) {
+	if !readJSON(w, r, &in) || !validBudget(w, in.Spec.Budget) {
 		return
 	}
 	name := r.PathValue("name")

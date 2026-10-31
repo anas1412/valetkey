@@ -26,6 +26,7 @@
 - **Admin-managed keys, no self-service.** Tenants are plain users with no cluster access. The admin creates every key and hands it out; a tenant only ever holds its key.
 - **Any provider.** OpenAI, Anthropic, and anything OpenAI-compatible (vLLM, Ollama, OpenRouter, Groq, DeepSeek, Azure). OpenAI clients can use Anthropic models too.
 - **Rules per key.** Allowed models, IP ranges, requests and tokens per minute, scaled per tenant. Automatic failover between providers.
+- **Dollar budgets.** Per key and per tenant, per day, week or month, from live provider prices, DeepSeek peak hours included. Spend never goes past a budget.
 
 ## Minimal by design
 

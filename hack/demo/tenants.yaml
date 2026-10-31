@@ -1,7 +1,8 @@
 # Three tenants, one key each, and a traffic generator per key that reads the key's Secret.
 #   billing:  asks for gpt-4o-mini, and sometimes gpt-4o, which the key may not use (403)
 #   support:  Claude and GPT
-#   research: more traffic than its 30 rpm limit allows (429)
+#   research: more traffic than its 30 rpm limit allows (429), and a $0.50 daily budget
+#             that runs out after a few minutes (429 insufficient_quota)
 apiVersion: v1
 kind: Namespace
 metadata: { name: billing }
@@ -22,12 +23,16 @@ spec: { channelRefs: [openai] }
 apiVersion: valetkey.dev/v1alpha1
 kind: Group
 metadata: { name: support, namespace: valetkey-system }
-spec: { channelRefs: [openai, anthropic] }
+spec:
+  channelRefs: [openai, anthropic]
+  budget: { usd: "20", period: monthly }
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: Group
 metadata: { name: research, namespace: valetkey-system }
-spec: { channelRefs: [openai, anthropic] }
+spec:
+  channelRefs: [openai, anthropic, deepseek]
+  budget: { usd: "0.50", period: daily }
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
@@ -37,7 +42,9 @@ spec: { models: [gpt-4o-mini] }
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata: { name: helpdesk, namespace: support }
-spec: { models: [claude-haiku-4-5, claude-sonnet-4-5, gpt-4o-mini] }
+spec:
+  models: [claude-haiku-4-5, claude-sonnet-4-5, gpt-4o-mini]
+  budget: { usd: "5", period: daily }
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
@@ -95,5 +102,5 @@ spec:
           args: [load]
           envFrom: [{ secretRef: { name: notebooks-valetkey } }]
           env:
-            - { name: MODELS, value: "gpt-4o,claude-sonnet-4-5" }
+            - { name: MODELS, value: "gpt-4o,claude-sonnet-4-5,deepseek-v4-pro" }
             - { name: INTERVAL, value: "1" }

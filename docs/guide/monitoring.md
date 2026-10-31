@@ -20,6 +20,10 @@ Scrape `http://valetkey.valetkey-system:8081/metrics`, or enable the chart's `se
 | `valetkey_retries_total` | Counter | channel |
 | `valetkey_channel_errors_total` | Counter | channel |
 | `valetkey_keys_minted_total` | Counter | group |
+| `valetkey_cost_usd_total` | Counter | channel, model, group, proxykey_ns, proxykey_name |
+| `valetkey_budget_spent_usd` | Gauge | scope (key, tenant), name |
+| `valetkey_budget_usd` | Gauge | scope, name |
+| `valetkey_budget_rejections_total` | Counter | group, scope |
 | `valetkey_channels_active` | Gauge | type |
 | `valetkey_proxykeys_active` | Gauge | group |
 

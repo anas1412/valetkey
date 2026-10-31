@@ -27,8 +27,8 @@ features:
     title: Any provider
     details: OpenAI, Anthropic, and anything OpenAI-compatible (vLLM, Ollama, OpenRouter, Groq, DeepSeek, Azure). OpenAI clients can even use Anthropic models.
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>'
-    title: Limits that stick
-    details: Per-key model lists, IP ranges, requests and tokens per minute, scaled per tenant. Automatic failover between providers.
+    title: Limits and dollar budgets
+    details: Per-key models, IP ranges and rate limits. Dollar budgets per key and tenant from live prices, DeepSeek peak hours included. Spend never goes past a budget.
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>'
     title: Built-in dashboard
     details: Add providers by pasting a key and ticking models, create keys with copy-paste snippets, watch usage and activity live.

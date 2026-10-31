@@ -36,6 +36,10 @@ The tenant's `rpmRatio` and `tpmRatio` multiply these. When a limit is hit, the 
 
 Token counts come from the provider's usage data. For OpenAI-style streaming, the client must request it with `stream_options: {"include_usage": true}` for tokens to be counted.
 
+## Dollar budgets
+
+Budgets per key or tenant, in dollars per day, week or month, are covered in [Budgets & costs](/guide/budgets).
+
 ## Scaling
 
-Run **one replica**. Limits and dashboard history are counted in memory per pod, and the key reconciler has no leader election yet. One pod handles a lot of traffic: the work per request is small next to the provider's response time.
+Run **one replica**. Limits, budgets and dashboard history are counted in memory per pod, and the key reconciler has no leader election yet. One pod handles a lot of traffic: the work per request is small next to the provider's response time.

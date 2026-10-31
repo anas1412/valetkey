@@ -80,6 +80,25 @@ spec:
                   description: "Rewrites the requested model before forwarding, e.g. gpt-4o -> my-azure-deployment"
                   additionalProperties:
                     type: string
+                pricing:
+                  type: object
+                  description: "How requests on this channel are priced. Without it, prices come from the live catalogue for the provider guessed from baseURL."
+                  properties:
+                    provider:
+                      type: string
+                      description: "Catalogue provider id (models.dev), e.g. deepseek, openai, anthropic, groq"
+                    models:
+                      type: object
+                      description: "Per-model prices in dollars per million tokens; they win over the catalogue"
+                      additionalProperties:
+                        type: object
+                        required: [input, output]
+                        properties:
+                          input: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$' }
+                          output: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$' }
+                          cacheRead: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$' }
+                          cacheWrite: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$' }
+                          cacheWrite1h: { type: string, pattern: '^[0-9]+(\.[0-9]+)?$' }
             status:
               type: object
               properties:
@@ -136,6 +155,12 @@ spec:
         - name: Secret
           type: string
           jsonPath: .status.secretName
+        - name: Spent
+          type: string
+          jsonPath: .status.spend.usd
+        - name: Budget
+          type: string
+          jsonPath: .spec.budget.usd
         - name: Message
           type: string
           jsonPath: .status.message
@@ -168,6 +193,22 @@ spec:
                   type: integer
                   minimum: 0
                   description: "Tokens per minute for this key, multiplied by the group's tpmRatio. 0 = unlimited."
+                budget:
+                  type: object
+                  description: "Dollar budget per period. Requests that might go over it get 429 insufficient_quota."
+                  required: [usd]
+                  properties:
+                    usd:
+                      type: string
+                      pattern: '^[0-9]+(\.[0-9]+)?$'
+                      description: "Budget in US dollars per period, e.g. \"20\" or \"0.50\""
+                    period:
+                      type: string
+                      enum: [daily, weekly, monthly]
+                      default: monthly
+                    timezone:
+                      type: string
+                      description: "IANA time zone where periods start (midnight, Monday, the 1st). Default UTC."
             status:
               type: object
               properties:
@@ -199,6 +240,20 @@ spec:
                   type: string
                 secretName:
                   type: string
+                spend:
+                  type: object
+                  description: "Spend in the current budget period, written by Valetkey."
+                  properties:
+                    periodStart:
+                      type: string
+                    usd:
+                      type: string
+                    requests:
+                      type: integer
+                    unpriced:
+                      type: integer
+                    updatedAt:
+                      type: string
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -231,6 +286,12 @@ spec:
         - name: TPM
           type: string
           jsonPath: .spec.tpmRatio
+        - name: Spent
+          type: string
+          jsonPath: .status.spend.usd
+        - name: Budget
+          type: string
+          jsonPath: .spec.budget.usd
         - name: Ready
           type: boolean
           jsonPath: .status.ready
@@ -259,6 +320,22 @@ spec:
                   type: number
                   minimum: 0
                   default: 1.0
+                budget:
+                  type: object
+                  description: "Dollar budget per period for all of the tenant's keys together. Requests that might go over it get 429 insufficient_quota."
+                  required: [usd]
+                  properties:
+                    usd:
+                      type: string
+                      pattern: '^[0-9]+(\.[0-9]+)?$'
+                      description: "Budget in US dollars per period, e.g. \"20\" or \"0.50\""
+                    period:
+                      type: string
+                      enum: [daily, weekly, monthly]
+                      default: monthly
+                    timezone:
+                      type: string
+                      description: "IANA time zone where periods start (midnight, Monday, the 1st). Default UTC."
             status:
               type: object
               properties:
@@ -286,3 +363,17 @@ spec:
                   type: boolean
                 message:
                   type: string
+                spend:
+                  type: object
+                  description: "Spend in the current budget period, written by Valetkey."
+                  properties:
+                    periodStart:
+                      type: string
+                    usd:
+                      type: string
+                    requests:
+                      type: integer
+                    unpriced:
+                      type: integer
+                    updatedAt:
+                      type: string

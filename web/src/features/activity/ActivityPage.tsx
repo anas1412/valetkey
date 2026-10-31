@@ -4,11 +4,18 @@ import { PageHeader } from '@/components/PageHeader'
 import { Loader } from '@/components/Loader'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
-import { clockTime } from '@/lib/format'
+import { clockTime, formatUSD } from '@/lib/format'
 import type { OperatorEvent, RequestEntry } from '@/lib/types'
+
+function costLabel(r: RequestEntry): string {
+  if (r.costNote === 'unpriced' || r.costNote === 'no usage') return r.costNote
+  if (!r.costUSD) return ''
+  return `${formatUSD(r.costUSD)}${r.costNote === 'estimated' ? ' (estimated)' : ''}`
+}
 
 function fromRequest(r: RequestEntry, i: number): ActivityEvent {
   const failed = r.status >= 400
+  const cost = costLabel(r)
   return {
     id: `r-${r.time}-${i}`,
     type: failed ? 'error' : 'api',
@@ -17,8 +24,9 @@ function fromRequest(r: RequestEntry, i: number): ActivityEvent {
     description: `${r.namespace}/${r.key}${r.error ? ` · ${r.error}` : ''}`,
     timestamp: clockTime(r.time),
     isoTimestamp: new Date(r.time).toISOString(),
-    duration: `${r.latencyMs} ms`,
-    payload: { tenant: r.group, key: r.key, model: r.model, provider: r.channel, status: r.status, inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs },
+    duration: cost ? `${r.latencyMs} ms, ${cost}` : `${r.latencyMs} ms`,
+    payload: { tenant: r.group, key: r.key, model: r.model, provider: r.channel, status: r.status, inputTokens: r.inputTokens, outputTokens: r.outputTokens,
+      latencyMs: r.latencyMs, costUSD: r.costUSD, ...(r.costNote ? { costNote: r.costNote } : {}) },
   }
 }
 

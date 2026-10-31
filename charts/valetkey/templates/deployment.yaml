@@ -31,6 +31,8 @@ spec:
                 fieldRef: { fieldPath: metadata.namespace }
             - name: PROXY_URL
               value: {{ .Values.proxyURL | default (printf "http://%s.%s.svc.cluster.local:%v" (include "valetkey.fullname" .) .Release.Namespace .Values.service.proxyPort) | quote }}
+            - name: PRICING_REFRESH
+              value: {{ .Values.pricing.refreshInterval | quote }}
             {{- with .Values.prometheus.url }}
             - name: PROMETHEUS_URL
               value: {{ . | quote }}

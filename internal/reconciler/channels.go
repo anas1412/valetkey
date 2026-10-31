@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/anas1412/valetkey/internal/budget"
 	"log/slog"
 	"strings"
 
@@ -111,6 +112,11 @@ func (c *Controller) onGroup(obj any) {
 		return
 	}
 	c.registry.UpsertGroup(g)
+	if c.budgets != nil {
+		if limit, err := budget.Parse(g.Spec.Budget); err == nil {
+			c.budgets.Restore(budget.TenantScope(g.Name), limit, g.Status.Spend)
+		}
+	}
 	c.refreshGroupStatus(g)
 	c.RequeueAll()
 }
@@ -132,7 +138,10 @@ func (c *Controller) refreshGroupStatus(g *types.TenantGroup) {
 		}
 	}
 	reason, msg := "Ready", fmt.Sprintf("%d usable channel(s)", usable)
+	_, budgetErr := budget.Parse(g.Spec.Budget)
 	switch {
+	case budgetErr != nil:
+		reason, msg = "InvalidBudget", budgetErr.Error()
 	case !g.Enabled():
 		reason, msg = "Disabled", "group is disabled"
 	case usable == 0:
@@ -141,7 +150,7 @@ func (c *Controller) refreshGroupStatus(g *types.TenantGroup) {
 	if len(missing) > 0 {
 		msg += "; unknown channels: " + strings.Join(missing, ", ")
 	}
-	next := status.Ready(g.Status, g.Enabled() && usable > 0, reason, msg, g.Generation)
+	next := status.Ready(g.Status, g.Enabled() && usable > 0 && budgetErr == nil, reason, msg, g.Generation)
 	if !status.Changed(g.Status, next) {
 		return
 	}

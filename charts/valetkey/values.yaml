@@ -14,6 +14,13 @@ proxyURL: ""
 prometheus:
   url: ""
 
+# Live prices for dollar budgets and cost tracking. Valetkey fetches them from
+# models.dev, openrouter.ai, api-docs.deepseek.com and raw.githubusercontent.com
+# (Chinese holidays). Set refreshInterval to "off" in clusters without internet
+# access: the prices built into the image and channel overrides are used instead.
+pricing:
+  refreshInterval: 6h
+
 # Number of reverse proxies (ingress, load balancer) in front of Valetkey. With N > 0
 # the client IP used for allow lists is read from X-Forwarded-For.
 trustProxy: 0

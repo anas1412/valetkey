@@ -58,6 +58,8 @@ up() {
 
   say "Installing Valetkey, Prometheus and Grafana"
   kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  # Helm installs CRDs once and never upgrades them; apply them so new fields work.
+  kubectl apply --server-side --force-conflicts -f "$ROOT/charts/valetkey/crds/crds.yaml" >/dev/null
   helm upgrade --install valetkey "$ROOT/charts/valetkey" -n valetkey-system --create-namespace --wait \
     --set image.repository=localhost/valetkey --set image.tag=dev --set image.pullPolicy=Never \
     --set prometheus.url=http://prometheus.monitoring.svc:9090 \
@@ -77,11 +79,13 @@ up() {
   kubectl rollout status -n monitoring deploy/grafana --timeout 3m
   kubectl rollout status -n fake-llm deploy/fake-openai --timeout 2m
   kubectl rollout status -n fake-llm deploy/fake-anthropic --timeout 2m
+  kubectl rollout status -n fake-llm deploy/fake-deepseek --timeout 2m
   for ns in billing support research; do kubectl rollout status -n "$ns" deploy/traffic --timeout 2m; done
 
   cat <<MSG
 
 Valetkey playground is running. Traffic flows from three tenants (billing, support, research).
+The research tenant has a \$0.50 daily budget and runs out after a few minutes.
 
   Open the UIs:        hack/demo.sh forward
   Dashboard:           http://localhost:8082

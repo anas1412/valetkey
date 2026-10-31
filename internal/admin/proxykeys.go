@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"github.com/anas1412/valetkey/internal/budget"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,14 +19,16 @@ type keyView struct {
 	SecretName string             `json:"secretName,omitempty"`
 	Requests   int                `json:"requests"`
 	// "30d" when Requests comes from Prometheus, "pod" when it's since the pod started.
-	RequestsWindow string `json:"requestsWindow"`
-	LastUsed       *int64 `json:"lastUsed,omitempty"`
+	RequestsWindow string     `json:"requestsWindow"`
+	LastUsed       *int64     `json:"lastUsed,omitempty"`
+	Spend          *spendView `json:"spend,omitempty"`
 }
 
 func (a *API) viewKey(pk *types.ProxyKey) keyView {
 	u := a.Stats.KeyUsage(pk.Namespace, pk.Name)
 	return keyView{Namespace: pk.Namespace, Name: pk.Name, Spec: pk.Spec, Ready: pk.Status.Ready, Message: pk.Status.Message,
-		SecretName: pk.Status.SecretName, Requests: u.Requests, RequestsWindow: "pod", LastUsed: u.LastUsed}
+		SecretName: pk.Status.SecretName, Requests: u.Requests, RequestsWindow: "pod", LastUsed: u.LastUsed,
+		Spend: a.spendOf(budget.KeyScope(pk.Namespace, pk.Name), pk.Spec.Budget)}
 }
 
 func (a *API) listKeys(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +68,7 @@ func (a *API) createKey(w http.ResponseWriter, r *http.Request) {
 		Name      string             `json:"name"`
 		Spec      types.ProxyKeySpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) || !validName(w, in.Namespace, "tenant") || !validName(w, in.Name, "key name") {
+	if !readJSON(w, r, &in) || !validName(w, in.Namespace, "tenant") || !validName(w, in.Name, "key name") || !validBudget(w, in.Spec.Budget) {
 		return
 	}
 	pk := types.ProxyKey{
@@ -85,7 +88,7 @@ func (a *API) updateKey(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Spec types.ProxyKeySpec `json:"spec"`
 	}
-	if !readJSON(w, r, &in) {
+	if !readJSON(w, r, &in) || !validBudget(w, in.Spec.Budget) {
 		return
 	}
 	ns, name := r.PathValue("ns"), r.PathValue("name")

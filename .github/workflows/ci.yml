@@ -40,6 +40,11 @@ jobs:
       - uses: actions/checkout@v4
       - id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      # Prices built into the image, for clusters that can't fetch them.
+      - name: Refresh the built-in price list
+        run: go run ./hack/pricing-snapshot
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3

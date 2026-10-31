@@ -52,6 +52,7 @@ func (a *API) overview(w http.ResponseWriter, r *http.Request) {
 		"totals":           history.Totals,
 		"series":           history.Series,
 		"channelShare":     history.ChannelShare,
+		"cost":             history.Cost,
 		"counts": map[string]int{
 			"channels": len(a.Registry.Channels()), "groups": len(a.Registry.Groups()),
 			"keys": len(a.Controller.ProxyKeys()), "activeKeys": len(a.Registry.Routes()),
