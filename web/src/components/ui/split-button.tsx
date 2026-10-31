@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -164,6 +165,9 @@ export function SplitButton({
 
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
+  // The menu is portaled to <body> so scroll and overflow containers (tables)
+  // can't clip it; it's positioned against the button with fixed coordinates.
+  const [anchor, setAnchor] = useState({ top: 0, bottom: 0, right: 0 });
   const [activeIndex, setActiveIndex] = useState(0);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -221,15 +225,21 @@ export function SplitButton({
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
 
-      if (!rootRef.current?.contains(target)) {
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
       }
     };
+    // Fixed coordinates go stale when anything scrolls or resizes.
+    const close = () => setOpen(false);
 
     document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
 
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
     };
   }, [open]);
 
@@ -238,11 +248,17 @@ export function SplitButton({
   // ---------------------------------------------------------------------------
 
   useLayoutEffect(() => {
-    if (!open || !chevronRef.current) {
+    if (!open || !chevronRef.current || !rootRef.current) {
       return;
     }
 
     const triggerRect = chevronRef.current.getBoundingClientRect();
+    const rootRect = rootRef.current.getBoundingClientRect();
+    setAnchor({
+      top: rootRect.bottom + 8,
+      bottom: window.innerHeight - rootRect.top + 8,
+      right: window.innerWidth - rootRect.right,
+    });
 
     // Approximate menu height:
     // option height + menu vertical padding.
@@ -481,10 +497,13 @@ export function SplitButton({
           Dropdown menu
       ----------------------------------------------------------------------- */}
 
-      <AnimatePresence>
+      {createPortal(<AnimatePresence>
         {open && (
           <motion.div
             ref={menuRef}
+            style={placement === 'bottom'
+              ? { top: anchor.top, right: anchor.right }
+              : { bottom: anchor.bottom, right: anchor.right }}
             role="menu"
             aria-label={`${label} options`}
             tabIndex={-1}
@@ -508,17 +527,14 @@ export function SplitButton({
             }}
             transition={menuTransition}
             className={cn(
-              'absolute right-0 z-30',
+              'fixed z-50',
               'min-w-[10rem]',
               'rounded-xl',
               'border border-border',
               'bg-surface-raised',
               'p-1',
               'shadow-[0_12px_30px_-10px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.06)]',
-              'origin-top-right',
-              placement === 'bottom'
-                ? 'top-[calc(100%+8px)]'
-                : 'bottom-[calc(100%+8px)]',
+              placement === 'bottom' ? 'origin-top-right' : 'origin-bottom-right',
             )}
           >
             {options.map((option, index) => {
@@ -589,7 +605,7 @@ export function SplitButton({
             })}
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>, document.body)}
     </div>
   );
 }

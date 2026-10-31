@@ -514,7 +514,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
 
   // DESKTOP TABLE VIEW
   return (
-    <div className={cn('overflow-x-auto scrollbar-none font-sans', className)}>
+    <div className={cn('overflow-x-auto font-sans', className)}>
       <table className="w-full border-collapse text-left font-sans text-xs min-w-[500px] sm:min-w-full">
         <thead>
           <tr className="border-b border-border/50 bg-surface-raised/20 text-xs text-muted-foreground select-none">
