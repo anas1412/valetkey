@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
+	"github.com/anas1412/llmp/internal/stats"
 )
 
 const seriesStepMinutes = 5

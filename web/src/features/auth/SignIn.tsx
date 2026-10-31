@@ -31,14 +31,14 @@ export function SignIn({ disabled, onSignedIn }: { disabled: boolean; onSignedIn
       <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-elevated">
         <div className="flex flex-col items-center text-center mb-6">
           <Logo compact />
-          <h1 className="mt-4 text-xl font-semibold text-text-primary tracking-snug-heading">Sign in to llmproxy</h1>
+          <h1 className="mt-4 text-xl font-semibold text-text-primary tracking-snug-heading">Sign in to LLMP</h1>
           <p className="mt-1.5 text-sm text-text-secondary">Manage providers, tenants and API keys.</p>
         </div>
 
         {disabled ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-text-secondary space-y-2">
             <p className="font-medium text-text-primary">The dashboard is turned off</p>
-            <p>Set an admin key, then restart llmproxy:</p>
+            <p>Set an admin key, then restart LLMP:</p>
             <pre className="text-xs bg-surface-raised rounded-md p-2 overflow-x-auto">
 {`kubectl create secret generic llmproxy-admin \\
   -n llmproxy-system --from-literal=adminKey=<long random string>

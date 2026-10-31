@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anas1412/llmproxy-k8s/internal/admin"
-	"github.com/anas1412/llmproxy-k8s/internal/auth"
-	"github.com/anas1412/llmproxy-k8s/internal/metrics"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/relay"
+	"github.com/anas1412/llmp/internal/admin"
+	"github.com/anas1412/llmp/internal/auth"
+	"github.com/anas1412/llmp/internal/metrics"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/relay"
 )
 
 // Proxy is the tenant-facing handler.

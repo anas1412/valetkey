@@ -4,7 +4,7 @@ package status
 import (
 	"time"
 
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 // Ready builds a status with a Ready condition. lastTransitionTime is kept from

@@ -16,12 +16,12 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/anas1412/llmproxy-k8s/internal/auth"
-	"github.com/anas1412/llmproxy-k8s/internal/config"
-	"github.com/anas1412/llmproxy-k8s/internal/kube"
-	"github.com/anas1412/llmproxy-k8s/internal/reconciler"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
+	"github.com/anas1412/llmp/internal/auth"
+	"github.com/anas1412/llmp/internal/config"
+	"github.com/anas1412/llmp/internal/kube"
+	"github.com/anas1412/llmp/internal/reconciler"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/stats"
 )
 
 type API struct {
@@ -101,7 +101,7 @@ func (a *API) login(w http.ResponseWriter, r *http.Request) {
 	ip := auth.ClientIP(r, 0)
 	if wait := a.Sessions.LockedOut(ip); wait > 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
-		writeMessage(w, http.StatusTooManyRequests, fmt.Sprintf("too many wrong keys — try again in %d min", int(wait.Minutes())+1))
+		writeMessage(w, http.StatusTooManyRequests, fmt.Sprintf("too many wrong keys, try again in %d min", int(wait.Minutes())+1))
 		return
 	}
 	var body struct{ Key string }

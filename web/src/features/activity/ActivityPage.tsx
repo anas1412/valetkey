@@ -50,7 +50,7 @@ export function ActivityPage() {
     <>
       <PageHeader
         title="Activity"
-        description="Requests, admin changes and operator events on this pod. Only metadata is kept — never prompts or responses. Admin changes are also written to the pod log."
+        description="Requests, admin changes and operator events on this pod. Only metadata is kept, never prompts or responses. Admin changes are also written to the pod log."
       />
       {!data ? (error ? <p className="text-sm text-rose-500">{error}</p> : <Loader />) : events.length ? (
         <ActivityFeed

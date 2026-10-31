@@ -11,17 +11,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anas1412/llmproxy-k8s/internal/admin"
-	"github.com/anas1412/llmproxy-k8s/internal/auth"
-	"github.com/anas1412/llmproxy-k8s/internal/config"
-	"github.com/anas1412/llmproxy-k8s/internal/kube"
-	"github.com/anas1412/llmproxy-k8s/internal/metrics"
-	"github.com/anas1412/llmproxy-k8s/internal/reconciler"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/relay"
-	"github.com/anas1412/llmproxy-k8s/internal/server"
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
-	"github.com/anas1412/llmproxy-k8s/web"
+	"github.com/anas1412/llmp/internal/admin"
+	"github.com/anas1412/llmp/internal/auth"
+	"github.com/anas1412/llmp/internal/config"
+	"github.com/anas1412/llmp/internal/kube"
+	"github.com/anas1412/llmp/internal/metrics"
+	"github.com/anas1412/llmp/internal/reconciler"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/relay"
+	"github.com/anas1412/llmp/internal/server"
+	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/llmp/web"
 )
 
 // In-flight streams get this long to finish on shutdown.

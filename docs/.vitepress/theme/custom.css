@@ -1,0 +1,34 @@
+/* Theme-aware screenshots */
+.dark .light-only,
+html:not(.dark) .dark-only {
+  display: none;
+}
+
+.shot {
+  margin: 20px 0;
+}
+
+.shot img,
+.walkthrough video {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--vp-c-divider);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.25);
+}
+
+.walkthrough {
+  max-width: 1152px;
+  margin: 24px auto 0;
+}
+
+.VPHome .walkthrough {
+  margin-top: 48px;
+  padding: 0 24px;
+}
+
+.walkthrough p {
+  text-align: center;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}

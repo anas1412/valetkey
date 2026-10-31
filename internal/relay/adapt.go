@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
+	"github.com/anas1412/llmp/internal/registry"
 )
 
 const anthropicVersion = "2023-06-01"

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anas1412/llmproxy-k8s/internal/keys"
+	"github.com/anas1412/llmp/internal/keys"
 )
 
 const (

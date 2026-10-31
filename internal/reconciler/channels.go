@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/anas1412/llmproxy-k8s/internal/status"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/status"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 func (c *Controller) onChannel(obj any) {

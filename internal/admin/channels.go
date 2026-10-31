@@ -6,9 +6,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/anas1412/llmproxy-k8s/internal/kube"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/kube"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 type channelView struct {

@@ -3,7 +3,7 @@ package status
 import (
 	"testing"
 
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 func TestReadyKeepsTransitionTimeAndDetectsChanges(t *testing.T) {

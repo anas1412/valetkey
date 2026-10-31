@@ -5,8 +5,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/anas1412/llmproxy-k8s/internal/reconciler"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/reconciler"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 type keyView struct {
@@ -108,7 +108,7 @@ func (a *API) revealKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if key == "" {
-		writeMessage(w, 404, "key not minted yet — check the key status")
+		writeMessage(w, 404, "key not minted yet, check the key status")
 		return
 	}
 	a.audit(r, "revealed key "+pk.Namespace+"/"+pk.Name)

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anas1412/llmproxy-k8s/internal/keys"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
+	"github.com/anas1412/llmp/internal/keys"
+	"github.com/anas1412/llmp/internal/registry"
 )
 
 type ctxKey struct{}

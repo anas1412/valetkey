@@ -10,9 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/relay"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/relay"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 const discoverTimeout = 10 * time.Second

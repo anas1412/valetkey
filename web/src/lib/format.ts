@@ -1,7 +1,8 @@
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
+/** Whole numbers, compact above 1000. Rounds, because stat cards animate through fractional values. */
 export function formatCount(n: number): string {
-  return n < 1000 ? String(n) : compact.format(n)
+  return n < 1000 ? String(Math.round(n)) : compact.format(n)
 }
 
 export function formatPercent(part: number, total: number): string {

@@ -11,10 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/anas1412/llmproxy-k8s/internal/keys"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/status"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/keys"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/status"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 // SecretName is the tenant Secret holding a ProxyKey's virtual key.
@@ -34,7 +34,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		return fmt.Errorf("cannot decode ProxyKey")
 	}
 	uid := string(pk.UID)
-	// The group is always the ProxyKey's namespace — tenants can't pick another one.
+	// The group is always the ProxyKey's namespace; tenants can't pick another one.
 	group := ns
 
 	notReady := func(reason, msg string) error {

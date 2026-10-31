@@ -13,12 +13,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynfake "k8s.io/client-go/dynamic/fake"
 
-	"github.com/anas1412/llmproxy-k8s/internal/auth"
-	"github.com/anas1412/llmproxy-k8s/internal/config"
-	"github.com/anas1412/llmproxy-k8s/internal/kube"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/auth"
+	"github.com/anas1412/llmp/internal/config"
+	"github.com/anas1412/llmp/internal/kube"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 // Admin API against client-go's fake dynamic client: create/update write real objects.

@@ -12,12 +12,12 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/anas1412/llmproxy-k8s/internal/auth"
-	"github.com/anas1412/llmproxy-k8s/internal/keys"
-	"github.com/anas1412/llmproxy-k8s/internal/metrics"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/auth"
+	"github.com/anas1412/llmp/internal/keys"
+	"github.com/anas1412/llmp/internal/metrics"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 // Relay integration: a real Relay between an HTTP client and fake upstreams. No Kubernetes.

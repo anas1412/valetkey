@@ -1,0 +1,49 @@
+# Custom resources
+
+All three live in the API group `llmproxy.llmproxy.io/v1alpha1` and report a standard `Ready` condition in their status. Short names: `chan`, `grp`, `pkey`.
+
+## Channel
+
+A provider. Namespace: the operator namespace.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `type` | `openai` \| `anthropic` | required | `openai` covers every OpenAI-compatible API |
+| `baseURL` | string | required | e.g. `https://api.openai.com`. A path prefix (like `/api`) is kept; a trailing `/v1` isn't doubled |
+| `keySecretRef.name` | string | required | Secret in the operator namespace holding the real key |
+| `keySecretRef.key` | string | `apiKey` | Key inside that Secret |
+| `models` | string[] | any | Models this provider may serve |
+| `priority` | int | `10` | Share of traffic when several providers serve a model |
+| `status` | `Enabled` \| `Disabled` | `Enabled` | |
+| `modelMapping` | map | none | Requested model → model sent upstream |
+| `proxyURL` | string | none | Outbound HTTP proxy for this provider |
+| `skipTLSVerify` | bool | `false` | Skip TLS verification (self-signed endpoints only) |
+
+## Group
+
+A tenant. Namespace: the operator namespace. **Its name is the tenant namespace.**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `channelRefs` | string[] | required | Providers this tenant may use |
+| `status` | `Enabled` \| `Disabled` | `Enabled` | Disabled stops every key of the tenant |
+| `rpmRatio` | number | `1.0` | Multiplies each key's `rpm` |
+| `tpmRatio` | number | `1.0` | Multiplies each key's `tpm` |
+
+## ProxyKey
+
+An API key. Namespace: the tenant's namespace.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `status` | `Enabled` \| `Disabled` | `Enabled` | |
+| `models` | string[] | any | Models this key may use |
+| `subnets` | string[] | any | Allowed client IP ranges (IPv4/IPv6 CIDR or single address) |
+| `rpm` | int | unlimited | Requests per minute (× tenant `rpmRatio`) |
+| `tpm` | int | unlimited | Tokens per minute (× tenant `tpmRatio`) |
+
+Status fields: `ready`, `message`, `conditions`, `secretName`, and `keyHash` (SHA-256 of the key; the key itself is only in the Secret).
+
+## Full example
+
+See [`deploy/examples.yaml`](https://github.com/anas1412/llmp/blob/main/deploy/examples.yaml).

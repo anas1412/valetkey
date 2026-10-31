@@ -14,12 +14,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/anas1412/llmproxy-k8s/internal/config"
-	"github.com/anas1412/llmproxy-k8s/internal/kube"
-	"github.com/anas1412/llmproxy-k8s/internal/metrics"
-	"github.com/anas1412/llmproxy-k8s/internal/registry"
-	"github.com/anas1412/llmproxy-k8s/internal/stats"
-	"github.com/anas1412/llmproxy-k8s/internal/types"
+	"github.com/anas1412/llmp/internal/config"
+	"github.com/anas1412/llmp/internal/kube"
+	"github.com/anas1412/llmp/internal/metrics"
+	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/llmp/internal/types"
 )
 
 // Periodic resync re-delivers every object as an update, catching anything missed

@@ -1,4 +1,4 @@
-module github.com/anas1412/llmproxy-k8s
+module github.com/anas1412/llmp
 
 go 1.26.0
 

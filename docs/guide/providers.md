@@ -1,0 +1,53 @@
+# Providers
+
+A provider (Kubernetes kind: `Channel`) is one upstream LLM API plus the real API key LLMP uses for it. Providers live in the operator namespace (`llmproxy-system`), so tenants never see their keys.
+
+## Add a provider in the dashboard
+
+Open **Providers → Add provider**.
+
+<Shot name="add-provider" alt="The Add provider form" />
+
+1. **Provider**: pick OpenAI, Anthropic, OpenRouter, Groq, DeepSeek, or *Other (OpenAI-compatible)* for vLLM, Ollama, Azure, LiteLLM and similar. The base URL is filled in for you.
+2. **Name**: lowercase, e.g. `openai`. You'll pick providers by this name when creating tenants.
+3. **API key**: paste it. It's saved as a Kubernetes Secret (`<name>-api-key`) and never shown again.
+4. **Models**: leave **Allow any** on, or choose **Choose specific models instead**: LLMP asks the provider for its model list and you tick the ones to allow. No typing model names by hand.
+5. **Priority**: when a tenant has several providers for the same model, higher priority gets proportionally more traffic (20 gets twice the traffic of 10).
+
+Under **Advanced**:
+
+- **Model mapping**: rename a requested model before it's sent, e.g. `gpt-4o → my-azure-deployment`.
+- **Outbound proxy**: send this provider's traffic through an HTTP proxy.
+- **Skip TLS certificate check**: only for self-hosted endpoints with self-signed certificates.
+
+After saving, the provider shows **Ready** once LLMP has read its key. **Test** confirms the provider accepts it.
+
+## Failover
+
+If a provider answers 429 (rate limited), a 5xx error, or doesn't answer at all, LLMP retries the request on the tenant's next provider that serves the same model, before anything is sent back to the app. Up to three providers are tried.
+
+## OpenAI ↔ Anthropic
+
+- Apps using the **OpenAI** API can be routed to an **Anthropic** provider: requests, responses and streaming are translated, including tools, images and system prompts.
+- Apps using the **Anthropic** API (`/v1/messages`) are passed through unchanged to Anthropic providers.
+
+## With kubectl
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata: { name: openai-key, namespace: llmproxy-system }
+stringData: { apiKey: sk-YOUR_REAL_KEY }
+---
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Channel
+metadata: { name: openai, namespace: llmproxy-system }
+spec:
+  type: openai                       # or anthropic
+  baseURL: https://api.openai.com
+  keySecretRef: { name: openai-key } # key defaults to "apiKey"
+  models: [gpt-4o, gpt-4o-mini]      # omit to allow any model
+  priority: 10
+```
+
+See [Custom resources](/reference/crds#channel) for every field.
