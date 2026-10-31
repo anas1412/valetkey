@@ -6,12 +6,7 @@ The name comes from a car's valet key: it starts the car but can't open the trun
 
 You add your **real** provider keys once. Valetkey then hands out **virtual keys** to tenants (teams, apps, customers or environments), each in its own namespace. Apps call Valetkey with their virtual key; Valetkey checks the key's rules, swaps in the real key and forwards the request.
 
-```
-Tenant app ──POST /v1/chat/completions──▶ Valetkey ──▶ OpenAI / Anthropic / vLLM / Ollama / …
-              (sk-proxy-… virtual key)      │
-                                            │  checks: key enabled? model allowed?
-                                            │          IP allowed? under its limits?
-```
+<RequestFlow />
 
 ## Why use it
 
@@ -28,10 +23,10 @@ Tenant app ──POST /v1/chat/completions──▶ Valetkey ──▶ OpenAI / 
 | `Tenant` | You | A namespace allowed to use some providers, with optional limit multipliers. |
 | `ProxyKey` (an API key) | You | A virtual key in the tenant's namespace, with its own rules. Valetkey writes the key into a Secret next to it, and you hand it to the tenant. |
 
-You manage all three as YAML, from Git with [Argo CD or Flux](/guide/gitops) or with [`kubectl`](/guide/kubectl), and optionally look at them in the [dashboard](/guide/dashboard).
+You manage all three as YAML, from Git with [Argo CD or Flux](/guide/gitops) or with [`kubectl`](/guide/kubectl), and optionally look at them in the [dashboard](/guide/dashboard). [Setup from A to Z](/guide/setup) walks through a complete setup.
 
 ## What it is not
 
-- Not a billing system: it counts requests and tokens, but doesn't price them.
-- Not a long-term analytics store: the dashboard keeps the last 24 hours in memory. Use the [Prometheus metrics](/guide/monitoring) for history.
-- Not multi-replica yet: run one pod (see [limits](/guide/limits#scaling)).
+- Not a billing system: costs follow public list prices, and your provider's invoice is what you actually pay. See [Budgets & costs](/guide/budgets).
+- Not an analytics store: on its own the dashboard keeps the last 24 hours in memory. History comes from your own Prometheus, see [Usage history](/guide/usage-history).
+- Not a cluster-wide rate limiter: with several replicas, each pod applies a key's rate limits on its own, and together they can go over a budget by a few seconds of spend. See [Scaling](/guide/limits#scaling).

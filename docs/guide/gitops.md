@@ -2,7 +2,7 @@
 
 Valetkey is built to be run from Git. Providers, tenants and keys are Kubernetes objects (`Provider`, `Tenant`, `ProxyKey`), and Valetkey has no database: what's in the cluster is the whole configuration. Argo CD or Flux applies your repository, and Valetkey does the rest.
 
-This guide sets up a repository from scratch: installing Valetkey, storing provider keys safely, adding tenants and keys, and the everyday changes as pull requests.
+This page is the reference for running Valetkey from Git: the repository layout, provider keys in Git, everyday changes as pull requests, and health checks. For a step-by-step first setup, including Prometheus and Grafana, follow [Setup from A to Z](/guide/setup).
 
 ## What goes in Git
 

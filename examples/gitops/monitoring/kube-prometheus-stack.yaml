@@ -1,0 +1,37 @@
+# Optional: Prometheus and Grafana, for clusters that don't have them yet (Flux).
+# Skip this folder if you already run Prometheus.
+apiVersion: v1
+kind: Namespace
+metadata: { name: monitoring }
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata: { name: prometheus-community, namespace: monitoring }
+spec:
+  type: oci
+  interval: 1h
+  url: oci://ghcr.io/prometheus-community/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata: { name: kube-prometheus-stack, namespace: monitoring }
+spec:
+  interval: 1h
+  timeout: 10m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: 92.17.0
+      sourceRef: { kind: HelmRepository, name: prometheus-community }
+  install: { crds: CreateReplace }
+  upgrade: { crds: CreateReplace }
+  values:
+    prometheus:
+      prometheusSpec:
+        retention: 35d                                # Valetkey's dashboard shows up to 30 days
+        serviceMonitorSelectorNilUsesHelmValues: false # scrape every ServiceMonitor, Valetkey's included
+        ruleSelectorNilUsesHelmValues: false           # load every PrometheusRule, Valetkey's alerts included
+    grafana:
+      sidecar:
+        dashboards:
+          searchNamespace: ALL                        # pick up Valetkey's dashboard from its namespace

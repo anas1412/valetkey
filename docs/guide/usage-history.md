@@ -2,6 +2,8 @@
 
 On its own, Valetkey keeps the last 24 hours of usage in the pod's memory. That's enough for a quick look, but it's gone when the pod restarts. For history that lasts, let the Prometheus you already run scrape Valetkey, and point Valetkey at it.
 
+[Setup from A to Z](/guide/setup) does all of this as part of a full setup, including installing Prometheus and Grafana. This page explains each part.
+
 Valetkey stores no prompts or responses either way, only counts: requests, tokens, errors and latency per tenant, key, provider and model.
 
 ## What you get
@@ -23,14 +25,23 @@ serviceMonitor:
     release: kube-prometheus-stack
 ```
 
-With a plain Prometheus, add a scrape job:
+With a plain Prometheus, add a scrape job that finds each Valetkey pod. Scrape the pods, not the Service: with more than one replica, the Service would reach a different pod each time and mix their counters.
 
 ```yaml
 scrape_configs:
   - job_name: valetkey
-    static_configs:
-      - targets: [valetkey.valetkey-system.svc:8081]
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces: { names: [valetkey-system] }
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        regex: valetkey;metrics
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
 ```
+
+Prometheus needs permission to list endpoints and pods in `valetkey-system` (the community Prometheus chart has it cluster-wide). Prometheus in another namespace, or with its own selectors: see [Use the Prometheus you already have](/guide/setup#option-b-use-the-prometheus-you-already-have).
 
 If you enabled the chart's `networkPolicy`, label the namespace Prometheus runs in, or its scrapes are blocked:
 

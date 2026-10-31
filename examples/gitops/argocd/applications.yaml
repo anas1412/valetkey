@@ -1,0 +1,100 @@
+# Argo CD: apply once with `kubectl apply -f`, or let an app-of-apps manage it.
+# Change repoURL in valetkey-config to your own repository.
+#
+# Valetkey's chart registry is an OCI registry: register it once.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: valetkey-charts
+  namespace: argocd
+  labels: { argocd.argoproj.io/secret-type: repository }
+stringData:
+  type: helm
+  name: valetkey
+  url: ghcr.io/anas1412/charts
+  enableOCI: "true"
+---
+# Optional: Prometheus and Grafana. Delete this Application if you already run Prometheus.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations: { argocd.argoproj.io/sync-wave: "0" }
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.17.0
+    helm:
+      valuesObject:
+        prometheus:
+          prometheusSpec:
+            retention: 35d                                # Valetkey's dashboard shows up to 30 days
+            serviceMonitorSelectorNilUsesHelmValues: false # scrape every ServiceMonitor
+            ruleSelectorNilUsesHelmValues: false           # load every PrometheusRule
+        grafana:
+          sidecar:
+            dashboards:
+              searchNamespace: ALL                        # pick up Valetkey's dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]   # its CRDs are too big for client-side apply
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: valetkey
+  namespace: argocd
+  annotations: { argocd.argoproj.io/sync-wave: "1" }
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/anas1412/charts
+    chart: valetkey
+    targetRevision: 0.1.0            # upgrade by changing this
+    helm:
+      valuesObject:
+        replicas: 2
+        serviceMonitor:
+          enabled: true
+          labels: { release: kube-prometheus-stack }
+        prometheusRule:
+          enabled: true
+          labels: { release: kube-prometheus-stack }
+        prometheus:
+          url: http://prometheus-operated.monitoring.svc:9090
+        grafanaDashboard:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: valetkey-system
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 10, backoff: { duration: 30s } }   # waits for Prometheus' CRDs on a new cluster
+---
+# Your providers, tenants and keys.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: valetkey-config
+  namespace: argocd
+  annotations: { argocd.argoproj.io/sync-wave: "2" }
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/platform.git
+    path: valetkey/config
+    targetRevision: main
+    directory: { recurse: true }     # every YAML file in the folder tree
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [SkipDryRunOnMissingResource=true]   # Valetkey's CRDs may not exist yet on the first sync
+    retry: { limit: 10, backoff: { duration: 30s } }

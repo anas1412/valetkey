@@ -42,3 +42,119 @@ html:not(.dark) .dark-only {
   width: 22px;
   height: 22px;
 }
+
+/* Diagrams (RequestFlow, SetupOverview): boxes joined by arrows, side by side on
+   wide screens and stacked on phones. */
+.vk-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1.35fr auto 1fr;
+  align-items: center;
+  gap: 6px;
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vk-node {
+  height: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  padding: 14px 16px;
+}
+
+.vk-node.vk-main {
+  border-color: var(--vp-c-brand-1);
+}
+
+.vk-title {
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.vk-sub {
+  margin-top: 4px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+}
+
+.vk-node ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.vk-node li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 2px 0;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+}
+
+.vk-node li svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--vp-c-brand-1);
+  transform: translateY(1px);
+}
+
+.vk-node code {
+  font-size: 12px;
+}
+
+.vk-inner {
+  margin-top: 8px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  padding: 8px 10px;
+}
+
+.vk-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  text-align: center;
+}
+
+.vk-arrow svg {
+  width: 44px;
+  height: 12px;
+}
+
+.vk-flow figcaption {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* The setup overview: the repository and the cluster hold more than the middle box. */
+.vk-flow.vk-setup {
+  grid-template-columns: 1.3fr auto 0.8fr auto 1.4fr;
+}
+
+@media (max-width: 640px) {
+  .vk-flow,
+  .vk-flow.vk-setup {
+    grid-template-columns: 1fr;
+  }
+
+  .vk-arrow {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .vk-arrow svg {
+    transform: rotate(90deg);
+    width: 28px;
+  }
+}

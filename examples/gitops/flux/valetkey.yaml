@@ -1,0 +1,33 @@
+# Flux: put this file in the folder Flux already applies (clusters/<cluster>/ after
+# `flux bootstrap`). It applies the three folders in order: monitoring, Valetkey, config.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata: { name: valetkey-monitoring, namespace: flux-system }
+spec:
+  interval: 10m
+  timeout: 10m
+  path: ./valetkey/monitoring          # remove this Kustomization if you already run Prometheus
+  prune: true
+  wait: true
+  sourceRef: { kind: GitRepository, name: flux-system }
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata: { name: valetkey-install, namespace: flux-system }
+spec:
+  dependsOn: [{ name: valetkey-monitoring }]   # remove too if you skipped monitoring
+  interval: 10m
+  path: ./valetkey/install
+  prune: true
+  wait: true
+  sourceRef: { kind: GitRepository, name: flux-system }
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata: { name: valetkey-config, namespace: flux-system }
+spec:
+  dependsOn: [{ name: valetkey-install }]
+  interval: 10m
+  path: ./valetkey/config              # no kustomization.yaml needed: every YAML file below is applied
+  prune: true                          # deleting a file deletes its objects
+  sourceRef: { kind: GitRepository, name: flux-system }

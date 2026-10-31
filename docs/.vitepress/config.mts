@@ -24,6 +24,7 @@ export default defineConfig({
         text: 'Introduction',
         items: [
           { text: 'What is Valetkey?', link: '/guide/what-is-valetkey' },
+          { text: 'Setup from A to Z', link: '/guide/setup' },
           { text: 'Quick start', link: '/guide/quick-start' },
           { text: 'GitOps', link: '/guide/gitops' },
         ],

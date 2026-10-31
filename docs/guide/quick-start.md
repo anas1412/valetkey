@@ -1,5 +1,7 @@
 # Quick start
 
+Try Valetkey in five minutes with `kubectl`. To set it up for real, from Git with Prometheus and Grafana, follow [Setup from A to Z](/guide/setup).
+
 You need a Kubernetes cluster (1.26+), `kubectl` and, for the recommended install, `helm`. Everything below works the same on Windows, macOS and Linux.
 
 ## 1. Install

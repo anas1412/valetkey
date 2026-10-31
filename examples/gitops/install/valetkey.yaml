@@ -1,0 +1,37 @@
+# Valetkey itself (Flux). Upgrade by changing the chart version.
+apiVersion: v1
+kind: Namespace
+metadata: { name: valetkey-system }
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata: { name: valetkey, namespace: valetkey-system }
+spec:
+  type: oci
+  interval: 1h
+  url: oci://ghcr.io/anas1412/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata: { name: valetkey, namespace: valetkey-system }
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: valetkey
+      version: 0.1.0
+      sourceRef: { kind: HelmRepository, name: valetkey }
+  install: { crds: CreateReplace }
+  upgrade: { crds: CreateReplace }   # Helm alone never updates CRDs
+  values:
+    replicas: 2                      # one pod can go down without an outage
+    serviceMonitor:
+      enabled: true                  # Prometheus scrapes Valetkey's metrics
+      labels: { release: kube-prometheus-stack }
+    prometheusRule:
+      enabled: true                  # alerts: budgets, errors, prices
+      labels: { release: kube-prometheus-stack }
+    prometheus:
+      url: http://prometheus-operated.monitoring.svc:9090   # Valetkey reads history back from it
+    grafanaDashboard:
+      enabled: true                  # Grafana's sidecar picks the dashboard up

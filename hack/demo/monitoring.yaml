@@ -8,9 +8,39 @@ data:
     global:
       scrape_interval: 15s
     scrape_configs:
+      # Each pod separately: with two replicas, the Service would mix their counters.
       - job_name: valetkey
-        static_configs:
-          - targets: [valetkey.valetkey-system.svc:8081]
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces: { names: [valetkey-system] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            regex: valetkey;metrics
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+---
+# Prometheus may find Valetkey's pods, and nothing else.
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: prometheus, namespace: monitoring }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: prometheus-discovery, namespace: valetkey-system }
+rules:
+  - apiGroups: ['']
+    resources: [endpoints, services, pods]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: prometheus-discovery, namespace: valetkey-system }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: prometheus-discovery }
+subjects: [{ kind: ServiceAccount, name: prometheus, namespace: monitoring }]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -20,6 +50,7 @@ spec:
   template:
     metadata: { labels: { app: prometheus } }
     spec:
+      serviceAccountName: prometheus
       containers:
         - name: prometheus
           image: prom/prometheus:v3.5.0

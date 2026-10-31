@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://anas.cyberia.tn/valetkey/"><b>Documentation</b></a> ·
+  <a href="https://anas.cyberia.tn/valetkey/guide/setup">Setup from A to Z</a> ·
   <a href="https://anas.cyberia.tn/valetkey/guide/quick-start">Quick start</a> ·
   <a href="https://anas.cyberia.tn/valetkey/guide/gitops">GitOps</a>
 </p>
@@ -43,6 +44,8 @@ helm install valetkey oci://ghcr.io/anas1412/charts/valetkey \
 ```
 
 Without Helm: `kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/latest/download/valetkey.yaml`. The image is `ghcr.io/anas1412/valetkey` (tagged `latest` and with each version). See [Helm values](https://anas.cyberia.tn/valetkey/reference/helm).
+
+Running it from Git with Flux or Argo CD, linked to Prometheus and Grafana: follow [Setup from A to Z](https://anas.cyberia.tn/valetkey/guide/setup), or copy [`examples/gitops/`](examples/gitops).
 
 ## Configure with CRDs
 

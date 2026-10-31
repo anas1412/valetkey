@@ -1,0 +1,17 @@
+# One file per provider: its API key Secret (encrypted), then the Provider.
+#
+# The Secret "openai-key" with your real OpenAI key goes here, above the Provider,
+# encrypted with External Secrets, Sealed Secrets or SOPS (see the setup guide, step 5).
+# For a first test you can instead create it by hand:
+#   kubectl create secret generic openai-key -n valetkey-system --from-literal=apiKey=sk-...
+apiVersion: valetkey.dev/v1alpha1
+kind: Provider
+metadata:
+  name: openai
+  namespace: valetkey-system
+spec:
+  type: openai                        # also for any OpenAI-compatible API
+  baseURL: https://api.openai.com
+  keySecretRef: { name: openai-key }  # the Secret above
+  models: [gpt-4o, gpt-4o-mini]       # optional, default: any model
+  priority: 10

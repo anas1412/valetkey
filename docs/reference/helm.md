@@ -23,7 +23,7 @@ helm show crds oci://ghcr.io/anas1412/charts/valetkey | kubectl apply --server-s
 | `service.type` | `ClusterIP` | |
 | `service.proxyPort` | `8000` | |
 | `service.metricsPort` | `8081` | |
-| `resources` | 20m / 32Mi requests, 256Mi limit | |
+| `resources` | small requests and a memory limit | See `values.yaml` in the chart |
 | `replicas` | `1` | Pods serving requests; see [Scaling](/guide/limits#scaling) |
 | `prometheusRule.enabled` | `false` | Create a Prometheus Operator `PrometheusRule` with Valetkey's alerts |
 | `prometheusRule.labels` | `{}` | Extra labels, e.g. for your Prometheus rule selector |

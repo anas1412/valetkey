@@ -1,0 +1,23 @@
+# One file per tenant: its namespace, the Tenant, and one ProxyKey per app.
+apiVersion: v1
+kind: Namespace
+metadata: { name: billing }
+---
+apiVersion: valetkey.dev/v1alpha1
+kind: Tenant
+metadata:
+  name: billing                       # must be the tenant's namespace
+  namespace: valetkey-system          # Tenants live in Valetkey's namespace
+spec:
+  providers: [openai]                 # providers this tenant may use
+  budget: { usd: "200", period: monthly }   # optional, for all the tenant's keys
+---
+apiVersion: valetkey.dev/v1alpha1
+kind: ProxyKey
+metadata:
+  name: invoice-api                   # one key per app
+  namespace: billing
+spec:
+  models: [gpt-4o-mini]               # optional, default: every model of the tenant's providers
+  rpm: 120                            # optional, requests per minute
+  budget: { usd: "20", period: daily }
