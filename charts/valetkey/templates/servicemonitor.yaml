@@ -2,15 +2,15 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "llmp.fullname" . }}
+  name: {{ include "valetkey.fullname" . }}
   labels:
-    {{- include "llmp.labels" . | nindent 4 }}
+    {{- include "valetkey.labels" . | nindent 4 }}
     {{- with .Values.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   selector:
-    matchLabels: {{- include "llmp.selectorLabels" . | nindent 6 }}
+    matchLabels: {{- include "valetkey.selectorLabels" . | nindent 6 }}
   endpoints:
     - port: metrics
       path: /metrics

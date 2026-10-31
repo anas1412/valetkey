@@ -7,18 +7,18 @@ You need a Kubernetes cluster (1.26+), `kubectl` and, for the recommended instal
 ::: code-group
 
 ```bash [Helm (recommended)]
-helm install llmproxy oci://ghcr.io/anas1412/charts/llmp --version 0.1.0 \
-  -n llmproxy-system --create-namespace
+helm install valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 \
+  -n valetkey-system --create-namespace
 ```
 
 ```bash [kubectl]
-kubectl create namespace llmproxy-system
-kubectl apply -n llmproxy-system -f https://github.com/anas1412/llmp/releases/download/v0.1.0/llmp.yaml
+kubectl create namespace valetkey-system
+kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/download/v0.2.0/valetkey.yaml
 ```
 
 :::
 
-This installs the three custom resources, a service account with the permissions LLMP needs, the deployment, and a `llmproxy` Service:
+This installs the three custom resources, a service account with the permissions Valetkey needs, the deployment, and a `valetkey` Service:
 
 - port **8000**: what your apps call;
 - port **8081**: health checks and Prometheus metrics.
@@ -30,13 +30,13 @@ There's no admin password to set. The optional dashboard and the admin API only 
 Store the provider's real API key in a Secret, then point a `Channel` at it:
 
 ```bash
-kubectl create secret generic openai-key -n llmproxy-system --from-literal=apiKey=sk-YOUR_REAL_KEY
+kubectl create secret generic openai-key -n valetkey-system --from-literal=apiKey=sk-YOUR_REAL_KEY
 ```
 
 ```yaml
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: Channel
-metadata: { name: openai, namespace: llmproxy-system }
+metadata: { name: openai, namespace: valetkey-system }
 spec:
   type: openai
   baseURL: https://api.openai.com
@@ -49,13 +49,13 @@ spec:
 A tenant is a `Group` named after the tenant's namespace; keys are `ProxyKey`s in that namespace:
 
 ```yaml
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: Group
-metadata: { name: billing, namespace: llmproxy-system }
+metadata: { name: billing, namespace: valetkey-system }
 spec:
   channelRefs: [openai]
 ---
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata: { name: invoice-api, namespace: billing }
 spec:
@@ -70,16 +70,16 @@ kubectl get pkey -n billing        # READY turns true within a second or two
 
 ## 4. Use the key
 
-LLMP writes the key into a Secret next to the `ProxyKey`. Mount it in your app with `envFrom`, or read it:
+Valetkey writes the key into a Secret next to the `ProxyKey`. Mount it in your app with `envFrom`, or read it:
 
 ```bash
-kubectl get secret invoice-api-llmproxy -n billing -o jsonpath='{.data.LLMPROXY_KEY}' | base64 -d
+kubectl get secret invoice-api-valetkey -n billing -o jsonpath='{.data.VALETKEY_KEY}' | base64 -d
 ```
 
-Then call LLMP like any OpenAI endpoint:
+Then call Valetkey like any OpenAI endpoint:
 
 ```bash
-curl http://llmproxy.llmproxy-system:8000/v1/chat/completions \
+curl http://valetkey.valetkey-system:8000/v1/chat/completions \
   -H "Authorization: Bearer sk-proxy-YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}'
@@ -87,7 +87,7 @@ curl http://llmproxy.llmproxy-system:8000/v1/chat/completions \
 
 ## Next
 
-- [kubectl & GitOps](/guide/kubectl): everyday tasks, Argo CD and Flux, letting tenants create their own keys.
-- [llmproxyctl](/guide/cli): status, provider checks, showing and rotating keys from the terminal.
+- [kubectl & GitOps](/guide/kubectl): everyday tasks, Argo CD and Flux.
+- [valetkeyctl](/guide/cli): status, provider checks, showing and rotating keys from the terminal.
 - [Dashboard](/guide/dashboard): an optional web view, through port-forward.
 - [Using a key in your app](/guide/using-keys): SDK examples for OpenAI and Anthropic.

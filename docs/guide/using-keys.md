@@ -1,8 +1,8 @@
 # Using a key in your app
 
-LLMP speaks the OpenAI Chat Completions API and the Anthropic Messages API. Point your SDK at LLMP and use the virtual key. Nothing else changes.
+Valetkey speaks the OpenAI Chat Completions API and the Anthropic Messages API. Point your SDK at Valetkey and use the virtual key. Nothing else changes.
 
-Inside the cluster the endpoint is `http://llmproxy.llmproxy-system:8000`. (It's the `LLMPROXY_ENDPOINT` value in the key's Secret.)
+Inside the cluster the endpoint is `http://valetkey.valetkey-system:8000`. (It's the `VALETKEY_ENDPOINT` value in the key's Secret.)
 
 ## OpenAI SDKs
 
@@ -11,7 +11,7 @@ Inside the cluster the endpoint is `http://llmproxy.llmproxy-system:8000`. (It's
 ```python [Python]
 from openai import OpenAI
 
-client = OpenAI(base_url="http://llmproxy.llmproxy-system:8000/v1", api_key="sk-proxy-…")
+client = OpenAI(base_url="http://valetkey.valetkey-system:8000/v1", api_key="sk-proxy-…")
 reply = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello"}],
@@ -22,7 +22,7 @@ print(reply.choices[0].message.content)
 ```ts [TypeScript]
 import OpenAI from "openai";
 
-const client = new OpenAI({ baseURL: "http://llmproxy.llmproxy-system:8000/v1", apiKey: "sk-proxy-…" });
+const client = new OpenAI({ baseURL: "http://valetkey.valetkey-system:8000/v1", apiKey: "sk-proxy-…" });
 const reply = await client.chat.completions.create({
   model: "gpt-4o-mini",
   messages: [{ role: "user", content: "Hello" }],
@@ -31,7 +31,7 @@ console.log(reply.choices[0].message.content);
 ```
 
 ```bash [cURL]
-curl http://llmproxy.llmproxy-system:8000/v1/chat/completions \
+curl http://valetkey.valetkey-system:8000/v1/chat/completions \
   -H "Authorization: Bearer sk-proxy-…" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}'
@@ -39,14 +39,14 @@ curl http://llmproxy.llmproxy-system:8000/v1/chat/completions \
 
 :::
 
-Streaming (`"stream": true`), tools and images work as usual. The same OpenAI code also works with **Anthropic** models when the tenant has an Anthropic provider; LLMP translates both ways.
+Streaming (`"stream": true`), tools and images work as usual. The same OpenAI code also works with **Anthropic** models when the tenant has an Anthropic provider; Valetkey translates both ways.
 
 ## Anthropic SDKs
 
 ```python
 import anthropic
 
-client = anthropic.Anthropic(base_url="http://llmproxy.llmproxy-system:8000", api_key="sk-proxy-…")
+client = anthropic.Anthropic(base_url="http://valetkey.valetkey-system:8000", api_key="sk-proxy-…")
 msg = client.messages.create(model="claude-sonnet-4-5", max_tokens=256,
                              messages=[{"role": "user", "content": "Hello"}])
 print(msg.content[0].text)
@@ -57,7 +57,7 @@ print(msg.content[0].text)
 ## Which models can a key use?
 
 ```bash
-curl http://llmproxy.llmproxy-system:8000/v1/models -H "Authorization: Bearer sk-proxy-…"
+curl http://valetkey.valetkey-system:8000/v1/models -H "Authorization: Bearer sk-proxy-…"
 ```
 
 The list is the tenant's providers' models, narrowed to the key's allowed models.

@@ -1,9 +1,9 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: channels.llmproxy.llmproxy.io
+  name: channels.valetkey.dev
 spec:
-  group: llmproxy.llmproxy.io
+  group: valetkey.dev
   scope: Namespaced
   names:
     kind: Channel
@@ -111,9 +111,9 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: proxykeys.llmproxy.llmproxy.io
+  name: proxykeys.valetkey.dev
 spec:
-  group: llmproxy.llmproxy.io
+  group: valetkey.dev
   scope: Namespaced
   names:
     kind: ProxyKey
@@ -203,9 +203,9 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: groups.llmproxy.llmproxy.io
+  name: groups.valetkey.dev
 spec:
-  group: llmproxy.llmproxy.io
+  group: valetkey.dev
   scope: Namespaced
   names:
     kind: Group

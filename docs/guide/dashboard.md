@@ -1,16 +1,16 @@
 # Dashboard (optional)
 
-LLMP is configured with [custom resources](/guide/kubectl); the dashboard is an optional web view on top of them. It shows usage and activity, and can create and edit the same objects you'd write in YAML.
+Valetkey is configured with [custom resources](/guide/kubectl); the dashboard is an optional web view on top of them. It shows usage and activity, and can create and edit the same objects you'd write in YAML.
 
 ## Open it
 
 The dashboard only listens inside the pod (on `127.0.0.1:8082`), so there's no Service, no Ingress and no password. You reach it with a port-forward, which your Kubernetes RBAC controls:
 
 ```bash
-kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082
+kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082
 ```
 
-Then open <http://localhost:8082>. Or let the CLI do it: `llmproxyctl dashboard`.
+Then open <http://localhost:8082>. Or let the CLI do it: `valetkeyctl dashboard`.
 
 It follows your system's light or dark setting and works on phones.
 
@@ -27,7 +27,7 @@ Requests, tokens, error rate and active keys for the last 24 hours, a requests c
 <Shot name="overview" alt="Overview with traffic chart and provider share" />
 
 ::: info
-History is kept in memory and resets when the pod restarts. For long-term data, scrape the [Prometheus metrics](/guide/monitoring).
+Without Prometheus, the Overview shows the last 24 hours from the pod's memory, which resets when the pod restarts. Set `prometheus.url` to get 7 and 30 days that survive restarts: see [Usage history with Prometheus](/guide/usage-history).
 :::
 
 ## Providers

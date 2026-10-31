@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 // JoinURL joins an API path onto a channel base URL, keeping any path prefix in the

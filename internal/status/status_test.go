@@ -3,7 +3,7 @@ package status
 import (
 	"testing"
 
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 func TestReadyKeepsTransitionTimeAndDetectsChanges(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/anas1412/llmp/internal/registry"
+	"github.com/anas1412/valetkey/internal/registry"
 )
 
 // Candidates returns the group's channels that can serve model for this client API,

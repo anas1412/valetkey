@@ -11,14 +11,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/anas1412/llmp/internal/keys"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/status"
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/keys"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/status"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 // SecretName is the tenant Secret holding a ProxyKey's virtual key.
-func SecretName(proxyKey string) string { return proxyKey + "-llmproxy" }
+func SecretName(proxyKey string) string { return proxyKey + "-valetkey" }
 
 func (c *Controller) reconcile(ctx context.Context, id string) error {
 	ns, name, _ := strings.Cut(id, "/")
@@ -72,8 +72,8 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		return err
 	}
 	secretHash := ""
-	if secret != nil && secret.Data["LLMPROXY_KEY"] != "" {
-		secretHash = keys.Hash(secret.Data["LLMPROXY_KEY"])
+	if secret != nil && secret.Data["VALETKEY_KEY"] != "" {
+		secretHash = keys.Hash(secret.Data["VALETKEY_KEY"])
 	}
 	if secretHash == "" || (keyHash != "" && secretHash != keyHash) {
 		virtual := keys.Generate()
@@ -110,12 +110,12 @@ func (c *Controller) writeTenantSecret(ctx context.Context, pk *types.ProxyKey, 
 		APIVersion: types.Group + "/" + types.Version, Kind: "ProxyKey",
 		Name: pk.Name, UID: pk.UID, Controller: &t, BlockOwnerDeletion: &f,
 	}
-	return c.kube.ApplySecret(ctx, pk.Namespace, secretName, map[string]string{"app.kubernetes.io/managed-by": "llmproxy-operator"}, owner,
+	return c.kube.ApplySecret(ctx, pk.Namespace, secretName, map[string]string{"app.kubernetes.io/managed-by": "valetkey"}, owner,
 		map[string]string{
-			"LLMPROXY_KEY":      key,
-			"LLMPROXY_ENDPOINT": c.cfg.ProxyURL,
-			"LLMPROXY_CHANNEL":  channel,
-			"LLMPROXY_GROUP":    group,
+			"VALETKEY_KEY":      key,
+			"VALETKEY_ENDPOINT": c.cfg.ProxyURL,
+			"VALETKEY_CHANNEL":  channel,
+			"VALETKEY_GROUP":    group,
 		})
 }
 

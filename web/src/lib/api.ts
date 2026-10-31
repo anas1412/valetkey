@@ -1,5 +1,5 @@
 import type {
-  Channel, ChannelSpec, ChannelTestResult, Group, GroupSpec, OperatorEvent, Overview, ProxyKey, ProxyKeySpec, RequestEntry,
+  Channel, ChannelSpec, ChannelTestResult, Group, GroupSpec, HistoryRange, OperatorEvent, Overview, ProxyKey, ProxyKeySpec, RequestEntry,
 } from './types'
 
 /** Thrown for any non-2xx answer; `message` is the server's explanation. */
@@ -14,7 +14,7 @@ export class ApiError extends Error {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   // The admin API requires this header: other websites can't add it, so they can't
   // use your open port-forward (see internal/admin guard).
-  const headers: Record<string, string> = { 'x-llmp-request': '1' }
+  const headers: Record<string, string> = { 'x-valetkey-request': '1' }
   if (body !== undefined) headers['content-type'] = 'application/json'
   const res = await fetch(`/api/v1${path}`, {
     method,
@@ -31,7 +31,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 const enc = encodeURIComponent
 
 export const api = {
-  overview: () => request<Overview>('GET', '/overview'),
+  overview: (range: HistoryRange = '24h') => request<Overview>('GET', `/overview?range=${range}`),
   activity: () => request<{ requests: RequestEntry[]; events: OperatorEvent[] }>('GET', '/activity'),
   namespaces: () => request<Array<{ name: string; hasGroup: boolean }>>('GET', '/namespaces'),
 

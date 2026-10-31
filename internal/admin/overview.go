@@ -3,22 +3,32 @@ package admin
 import (
 	"net/http"
 	"strings"
-
-	"github.com/anas1412/llmp/internal/stats"
 )
 
+// Bucket size of the in-memory series.
 const seriesStepMinutes = 5
 
 // overview is everything the dashboard's Overview page needs in one call.
-func (a *API) overview(w http.ResponseWriter, _ *http.Request) {
-	series := a.Stats.Series(seriesStepMinutes)
-	var totals stats.Bucket
-	for _, b := range series {
-		totals.Requests += b.Requests
-		totals.Errors += b.Errors
-		totals.InputTokens += b.InputTokens
-		totals.OutputTokens += b.OutputTokens
+// With Prometheus configured, usage comes from it for ?range=24h|7d|30d and spans
+// pod restarts; otherwise it's the pod's own memory (last 24 h since it started).
+func (a *API) overview(w http.ResponseWriter, r *http.Request) {
+	rangeName := r.URL.Query().Get("range")
+	if _, ok := historyRanges[rangeName]; !ok {
+		rangeName = "24h"
 	}
+	source, warning := "memory", ""
+	history := memoryHistory(a.Stats)
+	if a.Prom != nil {
+		if h, err := promHistory(r.Context(), a.Prom, rangeName); err != nil {
+			warning = "Prometheus unavailable, showing this pod's memory: " + err.Error()
+		} else {
+			history, source = h, "prometheus"
+		}
+	}
+	if source == "memory" {
+		rangeName = "24h"
+	}
+
 	type channelHealth struct {
 		Name    string `json:"name"`
 		Type    string `json:"type"`
@@ -32,12 +42,16 @@ func (a *API) overview(w http.ResponseWriter, _ *http.Request) {
 			Ready: e.UpstreamKey != "", Message: e.Channel.Status.Message})
 	}
 	writeJSON(w, 200, map[string]any{
-		"proxyURL":     a.Config.ProxyURL,
-		"startedAt":    a.Stats.StartedAt,
-		"stepMinutes":  seriesStepMinutes,
-		"totals":       map[string]int{"requests": totals.Requests, "errors": totals.Errors, "inputTokens": totals.InputTokens, "outputTokens": totals.OutputTokens},
-		"series":       series,
-		"channelShare": a.Stats.ChannelShare(),
+		"proxyURL":         a.Config.ProxyURL,
+		"startedAt":        a.Stats.StartedAt,
+		"source":           source,
+		"range":            rangeName,
+		"warning":          warning,
+		"prometheusConfig": a.Prom != nil,
+		"stepMinutes":      history.StepMinutes,
+		"totals":           history.Totals,
+		"series":           history.Series,
+		"channelShare":     history.ChannelShare,
 		"counts": map[string]int{
 			"channels": len(a.Registry.Channels()), "groups": len(a.Registry.Groups()),
 			"keys": len(a.Controller.ProxyKeys()), "activeKeys": len(a.Registry.Routes()),
@@ -50,7 +64,7 @@ func (a *API) activity(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, map[string]any{"requests": a.Stats.Requests(), "events": a.Stats.Events()})
 }
 
-// status is the compact summary used by llmproxyctl.
+// status is the compact summary used by valetkeyctl.
 func (a *API) status(w http.ResponseWriter, _ *http.Request) {
 	channels, groups, keys := []any{}, []any{}, []any{}
 	for _, e := range a.Registry.Channels() {

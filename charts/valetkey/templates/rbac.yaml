@@ -1,23 +1,23 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "llmp.fullname" . }}
-  labels: {{- include "llmp.labels" . | nindent 4 }}
+  name: {{ include "valetkey.fullname" . }}
+  labels: {{- include "valetkey.labels" . | nindent 4 }}
 ---
 # Cluster-wide: tenants' ProxyKeys and the key Secrets minted next to them.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "llmp.fullname" . }}
-  labels: {{- include "llmp.labels" . | nindent 4 }}
+  name: {{ include "valetkey.fullname" . }}
+  labels: {{- include "valetkey.labels" . | nindent 4 }}
 rules:
-  - apiGroups: [llmproxy.llmproxy.io]
+  - apiGroups: [valetkey.dev]
     resources: [proxykeys]
     verbs: [get, list, watch, create, update, delete]
-  - apiGroups: [llmproxy.llmproxy.io]
+  - apiGroups: [valetkey.dev]
     resources: [proxykeys/status]
     verbs: [get, patch, update]
-  # Key Secret names are generated (<proxykey>-llmproxy), so resourceNames can't narrow this.
+  # Key Secret names are generated (<proxykey>-valetkey), so resourceNames can't narrow this.
   - apiGroups: ['']
     resources: [secrets]
     verbs: [get, create, update, delete]
@@ -28,28 +28,28 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "llmp.fullname" . }}
-  labels: {{- include "llmp.labels" . | nindent 4 }}
+  name: {{ include "valetkey.fullname" . }}
+  labels: {{- include "valetkey.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "llmp.fullname" . }}
+  name: {{ include "valetkey.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "llmp.fullname" . }}
+    name: {{ include "valetkey.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ---
 # Release namespace only: Channels, Groups and provider key Secrets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "llmp.fullname" . }}
-  labels: {{- include "llmp.labels" . | nindent 4 }}
+  name: {{ include "valetkey.fullname" . }}
+  labels: {{- include "valetkey.labels" . | nindent 4 }}
 rules:
-  - apiGroups: [llmproxy.llmproxy.io]
+  - apiGroups: [valetkey.dev]
     resources: [channels, groups]
     verbs: [get, list, watch, create, update, delete]
-  - apiGroups: [llmproxy.llmproxy.io]
+  - apiGroups: [valetkey.dev]
     resources: [channels/status, groups/status]
     verbs: [get, patch, update]
   - apiGroups: ['']
@@ -59,13 +59,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "llmp.fullname" . }}
-  labels: {{- include "llmp.labels" . | nindent 4 }}
+  name: {{ include "valetkey.fullname" . }}
+  labels: {{- include "valetkey.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "llmp.fullname" . }}
+  name: {{ include "valetkey.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "llmp.fullname" . }}
+    name: {{ include "valetkey.fullname" . }}
     namespace: {{ .Release.Namespace }}

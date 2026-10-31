@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/anas1412/llmp
+  repository: ghcr.io/anas1412/valetkey
   # Defaults to the chart's appVersion.
   tag: ""
   pullPolicy: IfNotPresent
@@ -8,7 +8,13 @@ image:
 # Defaults to http://<release>.<namespace>.svc.cluster.local:8000
 proxyURL: ""
 
-# Number of reverse proxies (ingress, load balancer) in front of LLMP. With N > 0
+# Prometheus that scrapes Valetkey. When set, the dashboard's Overview and key usage come
+# from Prometheus (24 h, 7 d, 30 d) and survive pod restarts. Leave empty to use the
+# pod's own memory. Example: http://prometheus-operated.monitoring.svc:9090
+prometheus:
+  url: ""
+
+# Number of reverse proxies (ingress, load balancer) in front of Valetkey. With N > 0
 # the client IP used for allow lists is read from X-Forwarded-For.
 trustProxy: 0
 
@@ -26,13 +32,23 @@ resources:
 networkPolicy:
   enabled: false
   metricsNamespaceLabel:
-    llmproxy.llmproxy.io/metrics: "true"
+    valetkey.dev/metrics: "true"
 
 # Prometheus Operator ServiceMonitor for /metrics.
 serviceMonitor:
   enabled: false
   interval: 30s
   labels: {}
+
+# Grafana dashboard as a ConfigMap for Grafana's dashboard sidecar.
+grafanaDashboard:
+  enabled: false
+  # Namespace Grafana watches, if it only watches its own.
+  namespace: ""
+  labels:
+    grafana_dashboard: "1"
+  # e.g. grafana_folder: Valetkey
+  annotations: {}
 
 podAnnotations: {}
 nodeSelector: {}

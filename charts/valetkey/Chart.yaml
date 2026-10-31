@@ -1,0 +1,11 @@
+apiVersion: v2
+name: valetkey
+description: Valetkey, a Kubernetes-native LLM proxy. Per-tenant API keys for OpenAI, Anthropic and any OpenAI-compatible model.
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+home: https://anas.cyberia.tn/valetkey/
+icon: https://anas.cyberia.tn/valetkey/logo.svg
+sources:
+  - https://github.com/anas1412/valetkey
+keywords: [llm, proxy, openai, anthropic, operator, api-gateway]

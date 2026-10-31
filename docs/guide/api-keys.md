@@ -1,13 +1,13 @@
 # API keys
 
-An API key (Kubernetes kind: `ProxyKey`) is a virtual key for one app in a tenant's namespace. LLMP generates the key (`sk-proxy-…`) and writes it into a Secret next to it, called `<name>-llmproxy`.
+An API key (Kubernetes kind: `ProxyKey`) is a virtual key for one app in a tenant's namespace. Valetkey generates the key (`sk-proxy-…`) and writes it into a Secret next to it, called `<name>-valetkey`.
 
 <Shot name="keys" alt="API keys list" />
 
 ## With kubectl (recommended)
 
 ```yaml
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata:
   name: invoice-api
@@ -24,7 +24,7 @@ kubectl apply -f key.yaml
 kubectl get pkey invoice-api -n billing     # READY turns true within a second or two
 ```
 
-Disable, rotate and revoke from the terminal: see [kubectl & GitOps](/guide/kubectl#everyday-tasks) or [`llmproxyctl rotate`](/guide/cli#rotate-a-key).
+Disable, rotate and revoke from the terminal: see [kubectl & GitOps](/guide/kubectl#everyday-tasks) or [`valetkeyctl rotate`](/guide/cli#rotate-a-key).
 
 ## In the dashboard: create a key
 
@@ -61,16 +61,16 @@ The Secret holds everything an app needs:
 
 | Key | Value |
 |---|---|
-| `LLMPROXY_KEY` | the virtual key |
-| `LLMPROXY_ENDPOINT` | the proxy URL |
-| `LLMPROXY_GROUP` | the tenant |
-| `LLMPROXY_CHANNEL` | the tenant's first provider when the key was issued |
+| `VALETKEY_KEY` | the virtual key |
+| `VALETKEY_ENDPOINT` | the proxy URL |
+| `VALETKEY_GROUP` | the tenant |
+| `VALETKEY_CHANNEL` | the tenant's first provider when the key was issued |
 
 ```yaml
 # in a Deployment in the tenant's namespace
 envFrom:
   - secretRef:
-      name: invoice-api-llmproxy
+      name: invoice-api-valetkey
 ```
 
 The Secret is owned by the `ProxyKey`, so deleting the key deletes the Secret.

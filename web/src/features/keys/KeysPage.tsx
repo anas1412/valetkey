@@ -77,7 +77,7 @@ export function KeysPage() {
         k.spec.rpm ? `${k.spec.rpm} rpm` : '', k.spec.tpm ? `${formatCount(k.spec.tpm)} tpm` : ''].filter(Boolean).join(' · ') || 'none',
       cell: ({ value }) => <span className="text-text-secondary">{value}</span>,
     },
-    { id: 'requests', header: 'Requests', accessorKey: 'requests', sortable: true, align: 'right', priority: 'medium',
+    { id: 'requests', header: keys.data?.[0]?.requestsWindow === '30d' ? 'Requests (30d)' : 'Requests', accessorKey: 'requests', sortable: true, align: 'right', priority: 'medium',
       cell: ({ value }) => <span className="tabular-nums">{formatCount(value)}</span> },
     { id: 'lastUsed', header: 'Last used', accessorFn: (k) => k.lastUsed ?? 0, sortable: true, priority: 'low',
       cell: ({ row }) => <span className="text-text-secondary">{timeAgo(row.lastUsed)}</span> },

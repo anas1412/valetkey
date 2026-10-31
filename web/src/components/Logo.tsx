@@ -9,7 +9,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div className="leading-tight">
-          <div className="text-sm font-semibold text-text-primary tracking-snug-heading">LLMP</div>
+          <div className="text-sm font-semibold text-text-primary tracking-snug-heading">Valetkey</div>
           <div className="text-[11px] text-text-muted">dashboard</div>
         </div>
       )}

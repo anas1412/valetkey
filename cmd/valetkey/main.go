@@ -1,4 +1,4 @@
-// llmproxy: Kubernetes-native LLM proxy and operator.
+// valetkey: Kubernetes-native LLM proxy and operator.
 package main
 
 import (
@@ -11,16 +11,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anas1412/llmp/internal/admin"
-	"github.com/anas1412/llmp/internal/config"
-	"github.com/anas1412/llmp/internal/kube"
-	"github.com/anas1412/llmp/internal/metrics"
-	"github.com/anas1412/llmp/internal/reconciler"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/relay"
-	"github.com/anas1412/llmp/internal/server"
-	"github.com/anas1412/llmp/internal/stats"
-	"github.com/anas1412/llmp/web"
+	"github.com/anas1412/valetkey/internal/admin"
+	"github.com/anas1412/valetkey/internal/config"
+	"github.com/anas1412/valetkey/internal/kube"
+	"github.com/anas1412/valetkey/internal/metrics"
+	"github.com/anas1412/valetkey/internal/promql"
+	"github.com/anas1412/valetkey/internal/reconciler"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/relay"
+	"github.com/anas1412/valetkey/internal/server"
+	"github.com/anas1412/valetkey/internal/stats"
+	"github.com/anas1412/valetkey/web"
 )
 
 // In-flight streams get this long to finish on shutdown.
@@ -47,6 +48,10 @@ func run() error {
 	ctrl := reconciler.New(cfg, kc, reg, m, st)
 	rl := &relay.Relay{Registry: reg, Limiter: relay.NewRateLimiter(), Metrics: m, Stats: st, Transports: relay.NewTransports()}
 	api := &admin.API{Config: cfg, Kube: kc, Registry: reg, Controller: ctrl, Stats: st}
+	if cfg.PrometheusURL != "" {
+		api.Prom = promql.New(cfg.PrometheusURL)
+		slog.Info("usage history from Prometheus", "url", cfg.PrometheusURL)
+	}
 
 	servers := []*http.Server{
 		{Addr: cfg.ProxyAddr, Handler: server.Proxy(rl, reg, cfg.TrustProxy), ReadHeaderTimeout: 10 * time.Second},

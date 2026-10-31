@@ -1,31 +1,31 @@
-# llmproxyctl CLI
+# valetkeyctl CLI
 
-`llmproxyctl` is a small command-line tool for the [admin API](/reference/admin-api): status at a glance, provider checks, and showing or rotating keys. To create or change providers, tenants and keys from the terminal, use [kubectl](/guide/kubectl).
+`valetkeyctl` is a small command-line tool for the [admin API](/reference/admin-api): status at a glance, provider checks, and showing or rotating keys. To create or change providers, tenants and keys from the terminal, use [kubectl](/guide/kubectl).
 
 ## Install
 
 It's a single bash script that needs `bash`, `curl`, `jq` and `kubectl`. It runs on Linux and macOS, and on Windows through WSL or Git Bash.
 
 ```bash
-curl -fsSLo llmproxyctl https://raw.githubusercontent.com/anas1412/llmp/main/scripts/llmproxyctl
-chmod +x llmproxyctl
-sudo mv llmproxyctl /usr/local/bin/     # or anywhere on your PATH
+curl -fsSLo valetkeyctl https://raw.githubusercontent.com/anas1412/valetkey/main/scripts/valetkeyctl
+chmod +x valetkeyctl
+sudo mv valetkeyctl /usr/local/bin/     # or anywhere on your PATH
 ```
 
 ## How it connects
 
-There's nothing to configure. Each command opens a `kubectl port-forward` to the LLMP pod using your current kubeconfig, makes its call, and closes it again. If your Kubernetes user may port-forward to the pod, `llmproxyctl` works; if not, it doesn't. There is no separate password.
+There's nothing to configure. Each command opens a `kubectl port-forward` to the Valetkey pod using your current kubeconfig, makes its call, and closes it again. If your Kubernetes user may port-forward to the pod, `valetkeyctl` works; if not, it doesn't. There is no separate password.
 
 | Variable | Default | |
 |---|---|---|
-| `LLMP_NAMESPACE` | `llmproxy-system` | Namespace LLMP runs in |
-| `LLMP_TARGET` | `deploy/llmproxy` | What to port-forward to |
-| `LLMP_SERVER` | none | Use this admin URL instead of starting a port-forward (e.g. `http://localhost:8082`) |
+| `VALETKEY_NAMESPACE` | `valetkey-system` | Namespace Valetkey runs in |
+| `VALETKEY_TARGET` | `deploy/valetkey` | What to port-forward to |
+| `VALETKEY_SERVER` | none | Use this admin URL instead of starting a port-forward (e.g. `http://localhost:8082`) |
 
 ## Status
 
 ```bash
-llmproxyctl status
+valetkeyctl status
 ```
 
 ```
@@ -44,7 +44,7 @@ billing/invoice-api  yes
 Narrow it down with `status channels`, `status groups` or `status keys`:
 
 ```bash
-llmproxyctl status keys
+valetkeyctl status keys
 ```
 
 ```
@@ -57,7 +57,7 @@ billing    invoice-api  yes
 Asks the provider for its model list with the real key, without sending a prompt:
 
 ```bash
-llmproxyctl test channel openai
+valetkeyctl test channel openai
 ```
 
 ```json
@@ -72,7 +72,7 @@ llmproxyctl test channel openai
 ## Models a tenant can use
 
 ```bash
-llmproxyctl models billing
+valetkeyctl models billing
 ```
 
 ```
@@ -83,7 +83,7 @@ gpt-4o-mini
 ## Show a key
 
 ```bash
-llmproxyctl key billing/invoice-api
+valetkeyctl key billing/invoice-api
 ```
 
 ```
@@ -95,7 +95,7 @@ Every reveal is recorded in the [audit trail](/guide/security#audit-trail).
 ## Rotate a key
 
 ```bash
-llmproxyctl rotate billing/invoice-api
+valetkeyctl rotate billing/invoice-api
 ```
 
 ```
@@ -107,26 +107,26 @@ A new key is written to the same Secret right away, and the old one stops workin
 ## Open the dashboard
 
 ```bash
-llmproxyctl dashboard          # http://localhost:8082, Ctrl+C to stop
+valetkeyctl dashboard          # http://localhost:8082, Ctrl+C to stop
 ```
 
 ## Details as JSON
 
 ```bash
-llmproxyctl channel openai
-llmproxyctl group billing
+valetkeyctl channel openai
+valetkeyctl group billing
 ```
 
 These print the full object as JSON, handy for piping into `jq`.
 
 ## Scripting the admin API
 
-Anything the dashboard does, you can do with `curl` through a port-forward. Every request needs the `X-LLMP-Request` header. For example, adding a provider and storing its key in one call:
+Anything the dashboard does, you can do with `curl` through a port-forward. Every request needs the `X-Valetkey-Request` header. For example, adding a provider and storing its key in one call:
 
 ```bash
-kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082 &
 curl -X POST http://localhost:8082/api/v1/channels \
-  -H "X-LLMP-Request: 1" \
+  -H "X-Valetkey-Request: 1" \
   -H "Content-Type: application/json" \
   -d '{"name":"groq","apiKey":"gsk-…","spec":{"type":"openai","baseURL":"https://api.groq.com/openai"}}'
 ```

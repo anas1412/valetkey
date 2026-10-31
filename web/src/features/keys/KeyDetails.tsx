@@ -39,7 +39,7 @@ export function KeyDetails({ apiKey, proxyURL }: { apiKey: ProxyKey; proxyURL: s
     <div className="space-y-4 py-2">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-secondary">
         <span>Status: <span className="text-text-primary">{apiKey.message ?? (apiKey.ready ? 'Active' : 'Pending')}</span></span>
-        <span>Secret: <code className="text-text-primary">{apiKey.namespace}/{apiKey.secretName ?? `${apiKey.name}-llmproxy`}</code></span>
+        <span>Secret: <code className="text-text-primary">{apiKey.namespace}/{apiKey.secretName ?? `${apiKey.name}-valetkey`}</code></span>
         <span>Requests: <span className="text-text-primary tabular-nums">{apiKey.requests}</span></span>
         <span>Last used: <span className="text-text-primary">{timeAgo(apiKey.lastUsed)}</span></span>
       </div>
@@ -69,7 +69,7 @@ export function KeyDetails({ apiKey, proxyURL }: { apiKey: ProxyKey; proxyURL: s
           },
           {
             language: 'yaml', label: 'Kubernetes', filename: 'deployment.yaml',
-            code: `# In a Deployment in namespace ${apiKey.namespace}:\nenvFrom:\n  - secretRef:\n      name: ${apiKey.secretName ?? `${apiKey.name}-llmproxy`}\n# gives the app LLMPROXY_KEY and LLMPROXY_ENDPOINT`,
+            code: `# In a Deployment in namespace ${apiKey.namespace}:\nenvFrom:\n  - secretRef:\n      name: ${apiKey.secretName ?? `${apiKey.name}-valetkey`}\n# gives the app VALETKEY_KEY and VALETKEY_ENDPOINT`,
           },
         ]}
       />

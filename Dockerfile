@@ -15,10 +15,10 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY web/embed.go ./web/
 COPY --from=web /web/dist ./web/dist
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /llmproxy ./cmd/llmproxy
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /valetkey ./cmd/valetkey
 
 # Runtime: the binary, CA certificates and a non-root user — no shell, no package manager.
 FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=build /llmproxy /llmproxy
+COPY --from=build /valetkey /valetkey
 EXPOSE 8000 8081
-ENTRYPOINT ["/llmproxy"]
+ENTRYPOINT ["/valetkey"]

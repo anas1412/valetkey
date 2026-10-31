@@ -1,4 +1,4 @@
-// Package admin serves the management API used by the dashboard and llmproxyctl.
+// Package admin serves the management API used by the dashboard and valetkeyctl.
 // CRDs stay the source of truth: handlers write CRs and Secrets, and the
 // informers update the registry.
 package admin
@@ -14,11 +14,12 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/anas1412/llmp/internal/config"
-	"github.com/anas1412/llmp/internal/kube"
-	"github.com/anas1412/llmp/internal/reconciler"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/valetkey/internal/config"
+	"github.com/anas1412/valetkey/internal/kube"
+	"github.com/anas1412/valetkey/internal/promql"
+	"github.com/anas1412/valetkey/internal/reconciler"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/stats"
 )
 
 type API struct {
@@ -27,6 +28,8 @@ type API struct {
 	Registry   *registry.Registry
 	Controller *reconciler.Controller
 	Stats      *stats.Stats
+	// Prom is optional: when set, usage history is read from Prometheus.
+	Prom *promql.Client
 }
 
 // Register mounts every /api/v1 route on mux.
@@ -60,12 +63,12 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/proxykeys/{ns}/{name}/rotate", a.guard(a.rotateKey))
 }
 
-// guard admits only requests a local browser or llmproxyctl would send. The admin
+// guard admits only requests a local browser or valetkeyctl would send. The admin
 // API has no password: it listens on the pod's loopback, so reaching it at all takes
 // `kubectl port-forward` (Kubernetes RBAC). These checks stop other websites from
 // using an admin's open port-forward:
 //   - Host must be localhost: blocks DNS-rebinding pages.
-//   - X-LLMP-Request must be set: a cross-site page can't add a custom header
+//   - X-Valetkey-Request must be set: a cross-site page can't add a custom header
 //     without a CORS preflight, which this API never grants.
 func (a *API) guard(h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,8 +76,8 @@ func (a *API) guard(h http.HandlerFunc) http.Handler {
 			writeMessage(w, http.StatusForbidden, "the admin API only answers on localhost (use kubectl port-forward)")
 			return
 		}
-		if r.Header.Get("X-LLMP-Request") == "" {
-			writeMessage(w, http.StatusForbidden, "missing X-LLMP-Request header")
+		if r.Header.Get("X-Valetkey-Request") == "" {
+			writeMessage(w, http.StatusForbidden, "missing X-Valetkey-Request header")
 			return
 		}
 		h(w, r)

@@ -1,0 +1,18 @@
+{{- if .Values.grafanaDashboard.enabled }}
+# Picked up by Grafana's dashboard sidecar (kube-prometheus-stack and the Grafana chart
+# watch for ConfigMaps with this label by default).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valetkey.fullname" . }}-grafana-dashboard
+  namespace: {{ .Values.grafanaDashboard.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "valetkey.labels" . | nindent 4 }}
+    {{- toYaml .Values.grafanaDashboard.labels | nindent 4 }}
+  {{- with .Values.grafanaDashboard.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  valetkey.json: |-
+{{ .Files.Get "dashboards/valetkey.json" | indent 4 }}
+{{- end }}

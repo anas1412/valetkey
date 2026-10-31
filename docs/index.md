@@ -2,22 +2,22 @@
 layout: home
 
 hero:
-  name: LLMP
-  text: Your LLM keys, shared safely
-  tagline: A Kubernetes-native LLM proxy. Give each tenant its own API key for OpenAI, Anthropic or any OpenAI-compatible model, with limits, a dashboard and an audit trail. Your real provider keys never leave the cluster.
+  name: Valetkey
+  text: Minimal LLM Proxy
+  tagline: Give each tenant its own API key for OpenAI, Anthropic or any OpenAI-compatible model, configured as CRDs. One small image, no database, and your real provider keys never leave the cluster.
   image:
     src: /logo.svg
-    alt: LLMP
+    alt: Valetkey
   actions:
     - theme: brand
       text: Quick start
       link: /guide/quick-start
     - theme: alt
-      text: What is LLMP?
-      link: /guide/what-is-llmp
+      text: What is Valetkey?
+      link: /guide/what-is-valetkey
     - theme: alt
       text: GitHub
-      link: https://github.com/anas1412/llmp
+      link: https://github.com/anas1412/valetkey
 
 features:
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>'
@@ -36,8 +36,8 @@ features:
     title: Access through Kubernetes RBAC
     details: No passwords to manage. Kubernetes RBAC decides who can change what, and every change lands in the Kubernetes audit log.
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z"/><path d="M16 8 2 22"/><path d="M17.488 15H9"/></svg>'
-    title: Tiny and boring to run
-    details: One 32 MB distroless image, ~15 MB of memory, no database, no Redis. State lives in CRDs and Secrets.
+    title: Minimal by design
+    details: One small static binary, no database, no Redis. Prompts are never stored, and history comes from the Prometheus you already run.
 ---
 
 <Walkthrough caption="The optional dashboard, through kubectl port-forward: add a provider and pick its models, create a key, copy it, see it in the activity log." />

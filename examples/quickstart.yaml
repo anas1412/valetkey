@@ -6,7 +6,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: openai-key
-  namespace: llmproxy-system
+  namespace: valetkey-system
 stringData:
   apiKey: sk-REPLACE_ME
 ---
@@ -14,16 +14,16 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: anthropic-key
-  namespace: llmproxy-system
+  namespace: valetkey-system
 stringData:
   apiKey: sk-ant-REPLACE_ME
 ---
 # 2. Providers
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: Channel
 metadata:
   name: openai
-  namespace: llmproxy-system
+  namespace: valetkey-system
 spec:
   type: openai
   baseURL: https://api.openai.com
@@ -31,11 +31,11 @@ spec:
   models: [gpt-4o, gpt-4o-mini]
   priority: 10
 ---
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: Channel
 metadata:
   name: anthropic
-  namespace: llmproxy-system
+  namespace: valetkey-system
 spec:
   type: anthropic
   baseURL: https://api.anthropic.com
@@ -44,18 +44,18 @@ spec:
   priority: 20
 ---
 # 3. Tenant: its name is the tenant namespace
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: Group
 metadata:
   name: billing
-  namespace: llmproxy-system
+  namespace: valetkey-system
 spec:
   channelRefs: [openai, anthropic]
   rpmRatio: 1.0
   tpmRatio: 1.0
 ---
-# 4. Keys in the tenant namespace; LLMP writes each key to the Secret <name>-llmproxy
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+# 4. Keys in the tenant namespace; Valetkey writes each key to the Secret <name>-valetkey
+apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata:
   name: invoice-api
@@ -66,7 +66,7 @@ spec:
   rpm: 60        # requests per minute (× tenant rpmRatio); omit for unlimited
   tpm: 100000    # tokens per minute (× tenant tpmRatio)
 ---
-apiVersion: llmproxy.llmproxy.io/v1alpha1
+apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata:
   name: support-assistant

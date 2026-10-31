@@ -13,11 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynfake "k8s.io/client-go/dynamic/fake"
 
-	"github.com/anas1412/llmp/internal/config"
-	"github.com/anas1412/llmp/internal/kube"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/stats"
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/config"
+	"github.com/anas1412/valetkey/internal/kube"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/stats"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 // Admin API against client-go's fake dynamic client: create/update write real objects.
@@ -28,7 +28,7 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 		types.SecretGVR: "SecretList", types.NamespaceGVR: "NamespaceList",
 	})
 	kc := &kube.Client{Dynamic: dyn}
-	api := &API{Config: config.Config{OperatorNamespace: "llmproxy-system"}, Kube: kc, Registry: registry.New(),
+	api := &API{Config: config.Config{OperatorNamespace: "valetkey-system"}, Kube: kc, Registry: registry.New(),
 		Stats: stats.New()}
 	mux := http.NewServeMux()
 	api.Register(mux)
@@ -36,7 +36,7 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	call := func(method, path string, body any) int {
 		b, _ := json.Marshal(body)
 		req := httptest.NewRequest(method, "http://localhost:8082"+path, bytes.NewReader(b))
-		req.Header.Set("X-LLMP-Request", "1")
+		req.Header.Set("X-Valetkey-Request", "1")
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code >= 300 {
@@ -49,14 +49,14 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	if code := call("POST", "/api/v1/channels", map[string]any{"name": "openai", "spec": spec, "apiKey": "sk-real"}); code != 201 {
 		t.Fatalf("create: %d", code)
 	}
-	ch, err := dyn.Resource(types.ChannelGVR).Namespace("llmproxy-system").Get(t.Context(), "openai", metav1.GetOptions{})
+	ch, err := dyn.Resource(types.ChannelGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ref, _, _ := unstructured.NestedString(ch.Object, "spec", "keySecretRef", "name"); ref != "openai-api-key" {
 		t.Fatalf("keySecretRef = %q", ref)
 	}
-	if s, _ := kc.ReadSecret(t.Context(), "llmproxy-system", "openai-api-key"); s == nil {
+	if s, _ := kc.ReadSecret(t.Context(), "valetkey-system", "openai-api-key"); s == nil {
 		t.Fatal("provider key Secret not created")
 	}
 
@@ -64,7 +64,7 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	if code := call("PUT", "/api/v1/channels/openai", map[string]any{"spec": spec}); code != 200 {
 		t.Fatalf("update: %d", code)
 	}
-	ch, _ = dyn.Resource(types.ChannelGVR).Namespace("llmproxy-system").Get(t.Context(), "openai", metav1.GetOptions{})
+	ch, _ = dyn.Resource(types.ChannelGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
 	models, _, _ := unstructured.NestedStringSlice(ch.Object, "spec", "models")
 	ref, _, _ := unstructured.NestedString(ch.Object, "spec", "keySecretRef", "name")
 	if len(models) != 2 || ref != "openai-api-key" {
@@ -84,7 +84,7 @@ func TestGuardRejectsForeignRequests(t *testing.T) {
 	try := func(url string, header bool) int {
 		req := httptest.NewRequest("GET", url, nil)
 		if header {
-			req.Header.Set("X-LLMP-Request", "1")
+			req.Header.Set("X-Valetkey-Request", "1")
 		}
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)

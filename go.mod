@@ -1,4 +1,4 @@
-module github.com/anas1412/llmp
+module github.com/anas1412/valetkey
 
 go 1.26.0
 

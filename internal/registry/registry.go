@@ -5,8 +5,8 @@ package registry
 import (
 	"sync"
 
-	"github.com/anas1412/llmp/internal/keys"
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/keys"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 // Route maps a hashed virtual key to its tenant and limits.

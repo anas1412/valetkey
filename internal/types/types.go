@@ -1,4 +1,4 @@
-// Package types holds the llmproxy CRD shapes and conversions from unstructured objects.
+// Package types holds the valetkey CRD shapes and conversions from unstructured objects.
 package types
 
 import (
@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	Group   = "llmproxy.llmproxy.io"
+	Group   = "valetkey.dev"
 	Version = "v1alpha1"
 )
 

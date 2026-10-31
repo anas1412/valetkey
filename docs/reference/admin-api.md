@@ -1,12 +1,12 @@
 # Admin API
 
-The dashboard and [`llmproxyctl`](/guide/cli) use this API; you can script it too. It listens on `127.0.0.1:8082` inside the pod, so you reach it through a port-forward. There's no password: access is controlled by who may port-forward to the pod (Kubernetes RBAC).
+The dashboard and [`valetkeyctl`](/guide/cli) use this API; you can script it too. It listens on `127.0.0.1:8082` inside the pod, so you reach it through a port-forward. There's no password: access is controlled by who may port-forward to the pod (Kubernetes RBAC).
 
-Every request needs the header `X-LLMP-Request: 1` and must target `localhost` (see [Security](/guide/security#the-admin-api-without-a-password)). Errors are JSON: `{"message": "…"}`.
+Every request needs the header `X-Valetkey-Request: 1` and must target `localhost` (see [Security](/guide/security#the-admin-api-without-a-password)). Errors are JSON: `{"message": "…"}`.
 
 ```bash
-kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
-curl -H "X-LLMP-Request: 1" http://localhost:8082/api/v1/status
+kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082 &
+curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/status
 ```
 
 ## Overview
@@ -15,7 +15,7 @@ curl -H "X-LLMP-Request: 1" http://localhost:8082/api/v1/status
 |---|---|---|
 | `GET` | `/api/v1/overview` | Totals, 24 h series, traffic share, provider health, counts |
 | `GET` | `/api/v1/activity` | Last 500 requests and recent events (newest first) |
-| `GET` | `/api/v1/status` | Compact summary (used by `llmproxyctl`) |
+| `GET` | `/api/v1/status` | Compact summary (used by `valetkeyctl`) |
 | `GET` | `/api/v1/namespaces` | Namespaces, flagging which already have a tenant |
 
 ## Providers

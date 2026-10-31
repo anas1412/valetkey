@@ -16,10 +16,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
-const ManagedBy = "llmproxy-operator"
+const ManagedBy = "valetkey"
 
 type Client struct {
 	Dynamic dynamic.Interface
@@ -42,7 +42,7 @@ func New() (*Client, error) {
 	return &Client{Dynamic: dyn}, nil
 }
 
-// Secret is the part of a Kubernetes Secret llmproxy uses.
+// Secret is the part of a Kubernetes Secret valetkey uses.
 type Secret struct {
 	Name, Namespace string
 	Labels          map[string]string

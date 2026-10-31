@@ -15,18 +15,21 @@ type Config struct {
 	// Dashboard and admin API. Bound to the pod's loopback by default, so the only
 	// way in is `kubectl port-forward`, which Kubernetes RBAC controls.
 	AdminAddr string
-	// Number of trusted reverse proxies in front of llmproxy, or "" to use the
+	// Optional Prometheus base URL; when set, the dashboard reads usage history from it.
+	PrometheusURL string
+	// Number of trusted reverse proxies in front of valetkey, or "" to use the
 	// connection's address. With N, the client IP is taken from X-Forwarded-For.
 	TrustProxy string
 }
 
 func FromEnv() Config {
 	return Config{
-		OperatorNamespace: env("OPERATOR_NAMESPACE", "llmproxy-system"),
-		ProxyURL:          env("PROXY_URL", "http://llmproxy.llmproxy-system.svc.cluster.local:8000"),
+		OperatorNamespace: env("OPERATOR_NAMESPACE", "valetkey-system"),
+		ProxyURL:          env("PROXY_URL", "http://valetkey.valetkey-system.svc.cluster.local:8000"),
 		ProxyAddr:         ":" + env("PROXY_PORT", "8000"),
 		MetricsAddr:       ":" + env("METRICS_PORT", "8081"),
 		AdminAddr:         env("ADMIN_ADDR", "127.0.0.1:8082"),
+		PrometheusURL:     os.Getenv("PROMETHEUS_URL"),
 		TrustProxy:        os.Getenv("TRUST_PROXY"),
 	}
 }

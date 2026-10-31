@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anas1412/llmp/internal/auth"
-	"github.com/anas1412/llmp/internal/metrics"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/stats"
+	"github.com/anas1412/valetkey/internal/auth"
+	"github.com/anas1412/valetkey/internal/metrics"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/stats"
 )
 
 const (

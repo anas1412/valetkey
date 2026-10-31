@@ -2,14 +2,14 @@
 
 ## Who can do what
 
-LLMP doesn't have its own users or passwords. Everything is decided by Kubernetes RBAC:
+Valetkey doesn't have its own users or passwords. Everything is decided by Kubernetes RBAC:
 
 | To… | You need |
 |---|---|
-| Add or change providers and tenants | write access to `channels` / `groups` in the LLMP namespace |
+| Add or change providers and tenants | write access to `channels` / `groups` in the Valetkey namespace |
 | Issue, change or revoke keys | write access to `proxykeys` in the tenant's namespace |
 | Read a tenant's key | read access to Secrets in the tenant's namespace |
-| Use the dashboard, admin API or `llmproxyctl` | `pods/portforward` on the LLMP pod |
+| Use the dashboard, admin API or `valetkeyctl` | `pods/portforward` on the Valetkey pod |
 | Call an LLM | a virtual key |
 
 So the usual tools apply: grant roles to groups from your cluster's sign-in, and the Kubernetes audit log records who changed what and who opened a port-forward.
@@ -18,8 +18,8 @@ So the usual tools apply: grant roles to groups from your cluster's sign-in, and
 
 | Port | Reachable from | Serves |
 |---|---|---|
-| 8000 | the cluster (Service `llmproxy`) | `/v1/*` only: your apps' LLM calls |
-| 8081 | the cluster (Service `llmproxy`) | `/healthz`, `/readyz`, `/metrics` |
+| 8000 | the cluster (Service `valetkey`) | `/v1/*` only: your apps' LLM calls |
+| 8081 | the cluster (Service `valetkey`) | `/healthz`, `/readyz`, `/metrics` |
 | 8082 | **inside the pod only** (`127.0.0.1`) | dashboard and admin API, via `kubectl port-forward` |
 
 Nothing admin-related is reachable over the network. To also restrict who can reach 8000 and 8081, enable the chart's [network policy](/reference/helm).
@@ -29,9 +29,9 @@ Nothing admin-related is reachable over the network. To also restrict who can re
 Because the admin API trusts anyone who can port-forward, it also has to make sure a request really comes from you and not from a web page you happen to have open while the port-forward runs:
 
 - it only answers when the address is `localhost`, `127.0.0.1` or `[::1]`, which blocks DNS-rebinding pages;
-- every request must carry an `X-LLMP-Request` header, which other websites can't add, which blocks cross-site requests.
+- every request must carry an `X-Valetkey-Request` header, which other websites can't add, which blocks cross-site requests.
 
-The dashboard and `llmproxyctl` send the header for you. Scripts using `curl` add `-H "X-LLMP-Request: 1"`.
+The dashboard and `valetkeyctl` send the header for you. Scripts using `curl` add `-H "X-Valetkey-Request: 1"`.
 
 ## Audit trail
 
@@ -45,7 +45,7 @@ Who did it is in the Kubernetes audit log (the user that opened the port-forward
 
 ## What's stored where
 
-- **Provider keys**: Kubernetes Secrets in the LLMP namespace.
+- **Provider keys**: Kubernetes Secrets in the Valetkey namespace.
 - **Virtual keys**: a Secret per key in the tenant's namespace; only a SHA-256 hash is kept in the key's status.
 - **Request log**: metadata only (time, key, model, status, tokens, latency). Prompts and responses are never stored or logged.
 

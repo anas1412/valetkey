@@ -1,0 +1,10 @@
+Valetkey is running in namespace {{ .Release.Namespace }}.
+
+Apps call:  {{ .Values.proxyURL | default (printf "http://%s.%s.svc.cluster.local:%v" (include "valetkey.fullname" .) .Release.Namespace .Values.service.proxyPort) }}/v1
+
+Set it up with CRDs (Channel, Group, ProxyKey):
+  https://anas.cyberia.tn/valetkey/guide/kubectl
+
+Optional dashboard (only reachable through port-forward):
+  kubectl port-forward -n {{ .Release.Namespace }} deploy/{{ include "valetkey.fullname" . }} 8082:8082
+  then open http://localhost:8082

@@ -1,7 +1,7 @@
 // Records a walkthrough video of the dashboard: overview → add a provider and pick
 // its models → create an API key → copy it → activity. Needs ffmpeg and Chromium.
 //
-//   kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+//   kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082 &
 //   CHROME=/usr/bin/chromium node docs/scripts/walkthrough.mjs [http://localhost:8082]
 //
 // Writes docs/public/walkthrough.mp4 (H.264, 1440×900) and a poster image.
@@ -81,7 +81,7 @@ const steps = [
   [1000, `__demo.click(__demo.byText('[role=option]', 'research'))`],
   [600, `__demo.type(document.querySelector('input[placeholder="billing-service"]'), 'chat-app')`],
   [2500, `__demo.click(document.querySelector('[role=dialog] [role=switch]'))`],
-  [1200, `__demo.click(__demo.byText('[role=dialog] label', 'gemma3:12b'))`],
+  [1200, `__demo.click(__demo.byText('[role=dialog] label', 'qwen2.5-7b-instruct'))`],
   [4000, `__demo.click([...document.querySelectorAll('[role=dialog] button[type=submit]')].pop())`],
   // Open the new key: usage snippets, copy
   [2500, `__demo.click([...document.querySelectorAll('tbody tr')].find((r) => r.textContent.includes('chat-app'))?.querySelector('button'))`],
@@ -94,7 +94,7 @@ const steps = [
 
 const page = await launch()
 const frames = []
-const dir = mkdtempSync(join(tmpdir(), 'llmp-video-'))
+const dir = mkdtempSync(join(tmpdir(), 'valetkey-video-'))
 try {
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] })
   await page.send('Page.enable')

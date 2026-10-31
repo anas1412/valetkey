@@ -5,8 +5,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/anas1412/llmp/internal/reconciler"
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/reconciler"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 type keyView struct {
@@ -17,19 +17,29 @@ type keyView struct {
 	Message    string             `json:"message,omitempty"`
 	SecretName string             `json:"secretName,omitempty"`
 	Requests   int                `json:"requests"`
-	LastUsed   *int64             `json:"lastUsed,omitempty"`
+	// "30d" when Requests comes from Prometheus, "pod" when it's since the pod started.
+	RequestsWindow string `json:"requestsWindow"`
+	LastUsed       *int64 `json:"lastUsed,omitempty"`
 }
 
 func (a *API) viewKey(pk *types.ProxyKey) keyView {
 	u := a.Stats.KeyUsage(pk.Namespace, pk.Name)
 	return keyView{Namespace: pk.Namespace, Name: pk.Name, Spec: pk.Spec, Ready: pk.Status.Ready, Message: pk.Status.Message,
-		SecretName: pk.Status.SecretName, Requests: u.Requests, LastUsed: u.LastUsed}
+		SecretName: pk.Status.SecretName, Requests: u.Requests, RequestsWindow: "pod", LastUsed: u.LastUsed}
 }
 
-func (a *API) listKeys(w http.ResponseWriter, _ *http.Request) {
+func (a *API) listKeys(w http.ResponseWriter, r *http.Request) {
+	var promRequests map[string]int
+	if a.Prom != nil {
+		promRequests, _ = promKeyRequests(r.Context(), a.Prom) // on error, fall back to memory
+	}
 	out := []keyView{}
 	for _, pk := range a.Controller.ProxyKeys() {
-		out = append(out, a.viewKey(pk))
+		v := a.viewKey(pk)
+		if promRequests != nil {
+			v.Requests, v.RequestsWindow = promRequests[pk.Namespace+"/"+pk.Name], "30d"
+		}
+		out = append(out, v)
 	}
 	writeJSON(w, 200, out)
 }
@@ -102,7 +112,7 @@ func (a *API) revealKey(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	key, err := a.Kube.SecretValue(r.Context(), pk.Namespace, reconciler.SecretName(pk.Name), "LLMPROXY_KEY")
+	key, err := a.Kube.SecretValue(r.Context(), pk.Namespace, reconciler.SecretName(pk.Name), "VALETKEY_KEY")
 	if err != nil {
 		writeKubeError(w, err)
 		return

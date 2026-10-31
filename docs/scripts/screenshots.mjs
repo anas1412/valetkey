@@ -1,6 +1,6 @@
 // Captures dashboard screenshots for the docs with a local Chromium.
 //
-//   kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+//   kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082 &
 //   CHROME=/usr/bin/chromium node docs/scripts/screenshots.mjs [http://localhost:8082]
 //
 // Writes docs/public/screenshots/<page>-<theme>.png at 1440×900.

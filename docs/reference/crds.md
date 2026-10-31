@@ -1,6 +1,6 @@
 # Custom resources
 
-All three live in the API group `llmproxy.llmproxy.io/v1alpha1` and report a standard `Ready` condition in their status. Short names: `chan`, `grp`, `pkey`.
+All three live in the API group `valetkey.dev/v1alpha1` and report a standard `Ready` condition in their status. Short names: `chan`, `grp`, `pkey`.
 
 ## Channel
 
@@ -46,4 +46,4 @@ Status fields: `ready`, `message`, `conditions`, `secretName`, and `keyHash` (SH
 
 ## Full example
 
-See [`examples/quickstart.yaml`](https://github.com/anas1412/llmp/blob/main/examples/quickstart.yaml): two providers, one tenant, two keys.
+See [`examples/quickstart.yaml`](https://github.com/anas1412/valetkey/blob/main/examples/quickstart.yaml): two providers, one tenant, two keys.

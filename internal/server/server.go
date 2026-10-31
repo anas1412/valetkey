@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anas1412/llmp/internal/admin"
-	"github.com/anas1412/llmp/internal/auth"
-	"github.com/anas1412/llmp/internal/metrics"
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/relay"
+	"github.com/anas1412/valetkey/internal/admin"
+	"github.com/anas1412/valetkey/internal/auth"
+	"github.com/anas1412/valetkey/internal/metrics"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/relay"
 )
 
 // Proxy is the tenant-facing handler.

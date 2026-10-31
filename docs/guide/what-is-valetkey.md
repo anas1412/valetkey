@@ -1,11 +1,13 @@
-# What is LLMP?
+# What is Valetkey?
 
-LLMP (short for LLM Proxy) sits between your apps and your LLM providers, inside your Kubernetes cluster.
+Valetkey, the Minimal LLM Proxy, sits between your apps and your LLM providers, inside your Kubernetes cluster.
 
-You add your **real** provider keys once. LLMP then hands out **virtual keys** to tenants (teams, apps, customers or environments), each in its own namespace. Apps call LLMP with their virtual key; LLMP checks the key's rules, swaps in the real key and forwards the request.
+The name comes from a car's valet key: it starts the car but can't open the trunk. You keep the real provider key; each tenant gets a limited one.
+
+You add your **real** provider keys once. Valetkey then hands out **virtual keys** to tenants (teams, apps, customers or environments), each in its own namespace. Apps call Valetkey with their virtual key; Valetkey checks the key's rules, swaps in the real key and forwards the request.
 
 ```
-Tenant app ──POST /v1/chat/completions──▶ LLMP ──▶ OpenAI / Anthropic / vLLM / Ollama / …
+Tenant app ──POST /v1/chat/completions──▶ Valetkey ──▶ OpenAI / Anthropic / vLLM / Ollama / …
               (sk-proxy-… virtual key)      │
                                             │  checks: key enabled? model allowed?
                                             │          IP allowed? under its limits?
@@ -24,9 +26,9 @@ Tenant app ──POST /v1/chat/completions──▶ LLMP ──▶ OpenAI / Anth
 |---|---|---|
 | **Provider** (`Channel`) | You (the admin) | An upstream API and its real key: OpenAI, Anthropic, or any OpenAI-compatible endpoint. |
 | **Tenant** (`Group`) | You | A namespace allowed to use some providers, with optional limit multipliers. |
-| **API key** (`ProxyKey`) | You or the tenant | A virtual key in the tenant's namespace, with its own rules. LLMP writes the key into a Secret next to it. |
+| **API key** (`ProxyKey`) | You or the tenant | A virtual key in the tenant's namespace, with its own rules. Valetkey writes the key into a Secret next to it. |
 
-You manage all three as YAML with [`kubectl` or GitOps](/guide/kubectl), check on them with [`llmproxyctl`](/guide/cli), and optionally look at them in the [dashboard](/guide/dashboard).
+You manage all three as YAML with [`kubectl` or GitOps](/guide/kubectl), check on them with [`valetkeyctl`](/guide/cli), and optionally look at them in the [dashboard](/guide/dashboard).
 
 ## What it is not
 

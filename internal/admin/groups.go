@@ -5,7 +5,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 type groupView struct {

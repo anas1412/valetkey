@@ -53,6 +53,8 @@ export interface ProxyKey {
   message?: string
   secretName?: string
   requests: number
+  /** "30d" when requests come from Prometheus, "pod" when counted since the pod started. */
+  requestsWindow: '30d' | 'pod'
   lastUsed?: number
 }
 
@@ -64,9 +66,17 @@ export interface MinuteBucket {
   outputTokens: number
 }
 
+export type HistoryRange = '24h' | '7d' | '30d'
+
 export interface Overview {
   proxyURL: string
   startedAt: number
+  /** Where usage numbers come from: Prometheus (spans restarts) or this pod's memory. */
+  source: 'prometheus' | 'memory'
+  range: HistoryRange
+  /** Set when Prometheus is configured but couldn't be read. */
+  warning?: string
+  prometheusConfig: boolean
   stepMinutes: number
   totals: Omit<MinuteBucket, 'minute'>
   series: MinuteBucket[]

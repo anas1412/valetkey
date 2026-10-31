@@ -4,7 +4,7 @@ package status
 import (
 	"time"
 
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 // Ready builds a status with a Ready condition. lastTransitionTime is kept from

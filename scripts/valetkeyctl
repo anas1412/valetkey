@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# llmproxyctl: a small helper for the LLMP admin API.
-# It opens a kubectl port-forward to the LLMP pod by itself, so your kubeconfig's
+# valetkeyctl: a small helper for the Valetkey admin API.
+# It opens a kubectl port-forward to the Valetkey pod by itself, so your kubeconfig's
 # Kubernetes permissions are all it needs. Needs bash, curl, jq and kubectl.
 set -euo pipefail
 
-NAMESPACE="${LLMP_NAMESPACE:-llmproxy-system}"
-TARGET="${LLMP_TARGET:-deploy/llmproxy}"
-SERVER="${LLMP_SERVER:-}"   # set to skip the port-forward, e.g. http://localhost:8082
+NAMESPACE="${VALETKEY_NAMESPACE:-valetkey-system}"
+TARGET="${VALETKEY_TARGET:-deploy/valetkey}"
+SERVER="${VALETKEY_SERVER:-}"   # set to skip the port-forward, e.g. http://localhost:8082
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 usage() {
   cat <<'EOF'
-Usage: llmproxyctl <command> [args]
+Usage: valetkeyctl <command> [args]
 
 Status:
   status                  Summary of providers, tenants and keys
@@ -34,9 +34,9 @@ Dashboard:
   dashboard [port]        Port-forward the dashboard to http://localhost:<port> (default 8082)
 
 Environment:
-  LLMP_NAMESPACE  namespace LLMP runs in (default llmproxy-system)
-  LLMP_TARGET     what to port-forward to (default deploy/llmproxy)
-  LLMP_SERVER     use this admin URL instead of starting a port-forward
+  VALETKEY_NAMESPACE  namespace Valetkey runs in (default valetkey-system)
+  VALETKEY_TARGET     what to port-forward to (default deploy/valetkey)
+  VALETKEY_SERVER     use this admin URL instead of starting a port-forward
 EOF
   exit 0
 }
@@ -59,16 +59,16 @@ connect() {
   die "port-forward did not start: $(cat "$PF_LOG")"
 }
 
-# Calls the admin API: api <path> [curl args]. The X-LLMP-Request header is required
+# Calls the admin API: api <path> [curl args]. The X-Valetkey-Request header is required
 # by the API (it blocks cross-site requests from browsers).
 api() {
   local path=$1; shift
   connect
-  curl -sS --fail-with-body -H "X-LLMP-Request: 1" "$@" "$SERVER/api/v1$path"
+  curl -sS --fail-with-body -H "X-Valetkey-Request: 1" "$@" "$SERVER/api/v1$path"
 }
 
 # Sets ns and name from "namespace/name", or dies with the usage hint for command $2.
-split_key() { [[ "${1:-}" == */?* ]] || die "usage: llmproxyctl $2 <namespace>/<name>"; ns=${1%%/*}; name=${1#*/}; }
+split_key() { [[ "${1:-}" == */?* ]] || die "usage: valetkeyctl $2 <namespace>/<name>"; ns=${1%%/*}; name=${1#*/}; }
 
 table() { column -t -s$'\t'; }
 
@@ -95,16 +95,16 @@ case "$cmd" in
         { echo -e "KEY\tREADY"; jq -r '.keys[] | [.namespace + "/" + .name, (if .ready then "yes" else "no" end)] | @tsv' <<<"$data"; } | table ;;
     esac ;;
   test)
-    [ "${1:-}" = "channel" ] && [ -n "${2:-}" ] || die "usage: llmproxyctl test channel <name>"
+    [ "${1:-}" = "channel" ] && [ -n "${2:-}" ] || die "usage: valetkeyctl test channel <name>"
     api "/channels/$2/test" -X POST | jq . ;;
   channel)
-    [ -n "${1:-}" ] || die "usage: llmproxyctl channel <name>"
+    [ -n "${1:-}" ] || die "usage: valetkeyctl channel <name>"
     api "/channels/$1" | jq . ;;
   group)
-    [ -n "${1:-}" ] || die "usage: llmproxyctl group <name>"
+    [ -n "${1:-}" ] || die "usage: valetkeyctl group <name>"
     api "/groups/$1" | jq . ;;
   models)
-    [ -n "${1:-}" ] || die "usage: llmproxyctl models <tenant>"
+    [ -n "${1:-}" ] || die "usage: valetkeyctl models <tenant>"
     api "/groups/$1/models" | jq -r '.models[]?' ;;
   key)
     split_key "${1:-}" key

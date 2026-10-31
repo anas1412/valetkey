@@ -8,7 +8,7 @@ import { join } from 'node:path'
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export async function launch({ chrome = process.env.CHROME ?? 'chromium', width = 1440, height = 900 } = {}) {
-  const profile = mkdtempSync(join(tmpdir(), 'llmp-cdp-'))
+  const profile = mkdtempSync(join(tmpdir(), 'valetkey-cdp-'))
   const port = 9300 + Math.floor(Math.random() * 600)
   const browser = spawn(chrome, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
     '--hide-scrollbars', '--no-first-run', `--window-size=${width},${height}`, 'about:blank'], { stdio: 'ignore' })

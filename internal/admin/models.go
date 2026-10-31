@@ -10,9 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anas1412/llmp/internal/registry"
-	"github.com/anas1412/llmp/internal/relay"
-	"github.com/anas1412/llmp/internal/types"
+	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/relay"
+	"github.com/anas1412/valetkey/internal/types"
 )
 
 const discoverTimeout = 10 * time.Second

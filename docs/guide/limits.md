@@ -18,10 +18,10 @@ spec:
   subnets: [10.0.0.0/8, 2001:db8::/32, 192.168.1.5]
 ```
 
-IPv4 and IPv6 ranges, or single addresses. LLMP checks the address the connection comes from.
+IPv4 and IPv6 ranges, or single addresses. Valetkey checks the address the connection comes from.
 
 ::: warning Behind an ingress or load balancer
-The connection then comes from the ingress, not the client. Set [`TRUST_PROXY`](/reference/configuration) to the number of proxies in front of LLMP so the client address is read from `X-Forwarded-For`. For a `LoadBalancer` Service, `externalTrafficPolicy: Local` keeps the client address.
+The connection then comes from the ingress, not the client. Set [`TRUST_PROXY`](/reference/configuration) to the number of proxies in front of Valetkey so the client address is read from `X-Forwarded-For`. For a `LoadBalancer` Service, `externalTrafficPolicy: Local` keeps the client address.
 :::
 
 ## Rate limits
