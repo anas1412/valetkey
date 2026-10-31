@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, Power } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCw, Power, FileCode } from 'lucide-react'
 import { AdvancedDataTable, type ColumnDef } from '@/components/ui/advanced-data-table'
 import { SplitButton } from '@/components/ui/split-button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmSheet } from '@/components/ConfirmSheet'
 import { SpendBar } from '@/components/SpendBar'
+import { YamlSheet, type YamlTarget } from '@/components/YamlSheet'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { copyToClipboard } from '@/lib/utils'
@@ -29,6 +30,7 @@ export function KeysPage() {
   const overview = usePoll(api.overview, 60_000)
   const [editing, setEditing] = useState<ProxyKey | 'new'>()
   const [confirm, setConfirm] = useState<{ key: ProxyKey; action: 'delete' | 'rotate' }>()
+  const [yaml, setYaml] = useState<YamlTarget>()
   const notify = useToast()
 
   const copy = async (k: ProxyKey) => {
@@ -100,6 +102,7 @@ export function KeysPage() {
             { value: 'toggle', label: row.state === 'disabled' ? 'Enable' : 'Disable', icon: <Power className="size-3.5" />, onSelect: () => void toggle(row) },
             { value: 'rotate', label: 'Rotate key', icon: <RefreshCw className="size-3.5" />, onSelect: () => setConfirm({ key: row, action: 'rotate' }) },
             { value: 'edit', label: 'Edit', icon: <Pencil className="size-3.5" />, onSelect: () => setEditing(row) },
+            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'proxykeys', path: [row.namespace, row.name], title: `Key ${row.name}` }) },
             { value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setConfirm({ key: row, action: 'delete' }) },
           ]}
         />
@@ -135,6 +138,7 @@ export function KeysPage() {
         onClose={() => setEditing(undefined)}
         onSaved={keys.reload}
       />
+      <YamlSheet target={yaml} onClose={() => setYaml(undefined)} />
       <ConfirmSheet
         open={!!confirm}
         action={confirm?.action}

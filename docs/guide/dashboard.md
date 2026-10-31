@@ -59,3 +59,7 @@ What each provider model costs right now, per million tokens: input, output, cac
 The last 500 requests (metadata only, never prompts or responses), admin changes, key events and operator events, filterable and searchable.
 
 <Shot name="activity" alt="Activity log" />
+
+## View YAML
+
+Every provider, tenant and key has **View YAML** in its row menu. It shows the live object as a CRD, without status or fields the API server manages, with a Copy button. Use it to move what you set up in the dashboard into your GitOps repo, or to see which CRD field a form field sets. Key values are never in it: they stay in Kubernetes Secrets.

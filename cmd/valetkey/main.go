@@ -76,8 +76,12 @@ func run() error {
 	elector := &leader.Elector{Client: kc.Dynamic, Namespace: cfg.OperatorNamespace, Name: cfg.LeaseName,
 		Identity: pod, Duration: 15 * time.Second, Renew: 2 * time.Second}
 	ctrl.IsLeader = elector.Leading
+	ctrl.CheckKey = func(ctx context.Context, ch *types.Channel, key string) string {
+		_, err := relay.ListModels(ctx, ch, key)
+		return relay.RejectedReason(err)
+	}
 	rl := &relay.Relay{Registry: reg, Limiter: relay.NewRateLimiter(), Metrics: m, Stats: st, Transports: relay.NewTransports(),
-		Prices: prices, Budgets: budgets}
+		Prices: prices, Budgets: budgets, OnKeyRejected: ctrl.KeyVerdict}
 	api := &admin.API{Config: cfg, Kube: kc, Registry: reg, Controller: ctrl, Stats: st, Prices: prices, Budgets: budgets}
 	if cfg.PrometheusURL != "" {
 		api.Prom = promql.New(cfg.PrometheusURL)

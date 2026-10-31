@@ -97,6 +97,7 @@ export interface DataTableContextValue<T = any> {
   isLoading?: boolean;
   error?: string | null;
   accentColor?: string;
+  selectable: boolean;
 }
 
 const DataTableContext = createContext<DataTableContextValue | null>(null);
@@ -369,6 +370,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
     expandedRowIds,
     toggleRowExpansion,
     renderSubComponent,
+    selectable,
     viewMode,
     isLoading,
     error,
@@ -445,13 +447,13 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <input
+                  {selectable && <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleRowSelection(rowId)}
                     aria-label={`Select row ${rowId}`}
                     className="rounded border-border accent-foreground cursor-pointer w-4 h-4 shrink-0"
-                  />
+                  />}
                   <span className="font-medium text-xs text-foreground truncate">
                     {primaryCol?.cell
                       ? primaryCol.cell({ row, value: primaryVal })
@@ -521,7 +523,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
         <thead>
           <tr className="border-b border-border/50 bg-surface-raised/20 text-xs text-muted-foreground select-none">
             {/* Checkbox Column */}
-            <th className="w-10 sm:w-12 px-3.5 sm:px-6 py-3 sm:py-3.5">
+            {selectable && <th className="w-10 sm:w-12 px-3.5 sm:px-6 py-3 sm:py-3.5">
               <input
                 type="checkbox"
                 checked={isAllSelected}
@@ -532,7 +534,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
                 aria-label="Select all rows"
                 className="rounded border-border accent-foreground cursor-pointer w-4 h-4"
               />
-            </th>
+            </th>}
 
             {/* Expand Column */}
             {renderSubComponent && <th className="w-7 sm:w-8 px-1.5 sm:px-2 py-3 sm:py-3.5" />}
@@ -591,7 +593,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
                   )}
                 >
                   {/* Checkbox Cell */}
-                  <td className="w-10 sm:w-12 px-3.5 sm:px-6 py-3 sm:py-3.5">
+                  {selectable && <td className="w-10 sm:w-12 px-3.5 sm:px-6 py-3 sm:py-3.5">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -599,7 +601,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
                       aria-label={`Select row ${rowId}`}
                       className="rounded border-border accent-foreground cursor-pointer w-4 h-4"
                     />
-                  </td>
+                  </td>}
 
                   {/* Expand Toggle Cell */}
                   {renderSubComponent && (
@@ -647,7 +649,7 @@ export const DataTableContent: React.FC<DataTableContentProps> = ({
                 {/* Sub-component Expansion Drawer */}
                 {renderSubComponent && isExpanded && (
                   <tr className="bg-surface-raised/15">
-                    <td colSpan={visibleColumns.length + 2} className="p-0 border-b border-border/50">
+                    <td colSpan={visibleColumns.length + (selectable ? 2 : 1)} className="p-0 border-b border-border/50">
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -791,6 +793,8 @@ export interface DataTableProps<T = any> {
   defaultViewMode?: DataTableViewMode;
   accentColor?: string;
   renderSubComponent?: (row: T) => React.ReactNode;
+  /** Row checkboxes; only useful with bulk actions. */
+  selectable?: boolean;
   isLoading?: boolean;
   error?: string | null;
   className?: string;
@@ -805,6 +809,7 @@ export function DataTable<T = any>({
   defaultViewMode = 'auto',
   accentColor,
   renderSubComponent,
+  selectable = true,
   isLoading,
   error,
   className,
@@ -1019,6 +1024,7 @@ export function DataTable<T = any>({
     isLoading,
     error,
     accentColor,
+    selectable,
   };
 
   return (
@@ -1067,7 +1073,7 @@ export function AdvancedDataTable<T = any>({
   ...props
 }: AdvancedDataTableProps<T>) {
   return (
-    <DataTable data={data} columns={columns} {...props}>
+    <DataTable data={data} columns={columns} selectable={!!(onBulkDelete || onBulkExport)} {...props}>
       <DataTableToolbar
         title={title}
         searchPlaceholder={searchPlaceholder}

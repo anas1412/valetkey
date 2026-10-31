@@ -38,6 +38,8 @@ type Relay struct {
 	Transports *Transports
 	Prices     *pricing.Store  // optional: no costs without it
 	Budgets    *budget.Tracker // optional: no budgets without it
+	// OnKeyRejected is told when a provider answers 401: the channel's key is bad.
+	OnKeyRejected func(channel, reason string)
 }
 
 // result is the outcome of one relayed request, for metrics and the activity log.
@@ -152,6 +154,19 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
 			lastStatus, lastType = http.StatusBadGateway, "upstream_error"
 			slog.Warn("upstream failed", "channel", entry.Name(), "key", limitKey, "err", err)
+			continue
+		}
+
+		// 401 means the channel's own key is bad, not the client's: stop sending it traffic
+		// and use the next channel. 403 can be about one model, so it only moves on.
+		if resp.StatusCode == http.StatusUnauthorized || (!last && resp.StatusCode == http.StatusForbidden) {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
+			lastStatus, lastType = http.StatusBadGateway, "upstream_auth_error"
+			if resp.StatusCode == http.StatusUnauthorized && rl.OnKeyRejected != nil {
+				rl.OnKeyRejected(entry.Name(), "provider rejected the API key (HTTP 401)")
+			}
 			continue
 		}
 

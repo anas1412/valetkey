@@ -26,7 +26,12 @@ func (c *Controller) resolveChannel(ch *types.Channel) {
 	c.chanMu.Lock()
 	defer c.chanMu.Unlock()
 	key, problem := c.providerKey(ch.Spec.KeySecretRef)
+	old, known := c.registry.Channel(ch.Name)
 	c.registry.UpsertChannel(ch, key)
+	// A new key (or provider) gets checked once; the verdict lasts until it changes.
+	if key != "" && (!known || !old.SameKey(ch, key)) {
+		go c.checkKey(ch.Name)
+	}
 
 	if prev, seen := c.problems[ch.Name]; !seen || prev != problem {
 		switch {
@@ -42,8 +47,10 @@ func (c *Controller) resolveChannel(ch *types.Channel) {
 	reason, msg := "KeyResolved", "upstream key resolved"
 	if problem != "" {
 		reason, msg = "SecretUnavailable", problem
+	} else if e, _ := c.registry.Channel(ch.Name); e.Rejected != "" {
+		reason, msg = "KeyRejected", e.Rejected
 	}
-	next := status.Ready(ch.Status, problem == "", reason, msg, ch.Generation)
+	next := status.Ready(ch.Status, reason == "KeyResolved", reason, msg, ch.Generation)
 	if status.Changed(ch.Status, next) && c.leading() {
 		if err := c.kube.PatchStatus(context.Background(), types.ChannelGVR, c.cfg.OperatorNamespace, ch.Name, next); err != nil {
 			slog.Warn("channel status patch failed", "channel", ch.Name, "err", err)

@@ -30,12 +30,22 @@ type Route struct {
 type ChannelEntry struct {
 	Channel     *types.Channel
 	UpstreamKey string
+	// Rejected is why the provider refused the key (HTTP 401/403), "" if it hasn't.
+	Rejected string
 }
 
 func (e ChannelEntry) Name() string { return e.Channel.Name }
 
-// Usable means enabled and with a resolved key.
-func (e ChannelEntry) Usable() bool { return e.Channel.Enabled() && e.UpstreamKey != "" }
+// Usable means enabled, with a resolved key the provider hasn't rejected.
+func (e ChannelEntry) Usable() bool {
+	return e.Channel.Enabled() && e.UpstreamKey != "" && e.Rejected == ""
+}
+
+// SameKey reports whether the channel still sends the same key to the same provider,
+// so an earlier verdict on the key still holds.
+func (e ChannelEntry) SameKey(ch *types.Channel, upstreamKey string) bool {
+	return e.UpstreamKey == upstreamKey && e.Channel.Spec.BaseURL == ch.Spec.BaseURL && e.Channel.Spec.Type == ch.Spec.Type
+}
 
 type Registry struct {
 	mu       sync.RWMutex
@@ -92,7 +102,25 @@ func (r *Registry) Routes() []Route {
 func (r *Registry) UpsertChannel(ch *types.Channel, upstreamKey string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.channels[ch.Name] = ChannelEntry{Channel: ch, UpstreamKey: upstreamKey}
+	e := ChannelEntry{Channel: ch, UpstreamKey: upstreamKey}
+	if old, ok := r.channels[ch.Name]; ok && old.SameKey(ch, upstreamKey) {
+		e.Rejected = old.Rejected
+	}
+	r.channels[ch.Name] = e
+}
+
+// SetRejected records (msg != "") or clears a provider's refusal of the channel's key.
+// It reports whether anything changed.
+func (r *Registry) SetRejected(name, msg string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	e, ok := r.channels[name]
+	if !ok || e.Rejected == msg {
+		return false
+	}
+	e.Rejected = msg
+	r.channels[name] = e
+	return true
 }
 
 func (r *Registry) EvictChannel(name string) {

@@ -11,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function send(method: string, path: string, body?: unknown): Promise<Response> {
   // The admin API requires this header: other websites can't add it, so they can't
   // use your open port-forward (see internal/admin guard).
   const headers: Record<string, string> = { 'x-valetkey-request': '1' }
@@ -25,10 +25,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const data = await res.json().catch(() => ({}))
     throw new ApiError(res.status, data.message ?? data.error?.message ?? `request failed (HTTP ${res.status})`)
   }
+  return res
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await send(method, path, body)
   return res.status === 204 ? (undefined as T) : res.json()
 }
 
 const enc = encodeURIComponent
+
+export type YamlResource = 'channels' | 'groups' | 'proxykeys'
 
 export const api = {
   overview: (range: HistoryRange = '24h') => request<Overview>('GET', `/overview?range=${range}`),
@@ -56,6 +63,8 @@ export const api = {
   createKey: (namespace: string, name: string, spec: ProxyKeySpec) => request<ProxyKey>('POST', '/proxykeys', { namespace, name, spec }),
   updateKey: (ns: string, name: string, spec: ProxyKeySpec) => request<ProxyKey>('PUT', `/proxykeys/${enc(ns)}/${enc(name)}`, { spec }),
   deleteKey: (ns: string, name: string) => request<void>('DELETE', `/proxykeys/${enc(ns)}/${enc(name)}`),
+  /** The live object as CRD YAML, without status or server-managed fields. */
+  yaml: (resource: YamlResource, ...path: string[]) => send('GET', `/${resource}/${path.map(enc).join('/')}/yaml`).then((r) => r.text()),
   revealKey: (ns: string, name: string) => request<{ key: string }>('GET', `/proxykeys/${enc(ns)}/${enc(name)}/key`),
   rotateKey: (ns: string, name: string) => request<void>('POST', `/proxykeys/${enc(ns)}/${enc(name)}/rotate`),
 }

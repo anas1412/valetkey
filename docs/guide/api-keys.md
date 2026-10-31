@@ -53,6 +53,7 @@ From the **Copy key** menu on each row:
 - **Disable / Enable**: blocks the key immediately without deleting it.
 - **Rotate key**: issues a new key right away; the old one stops working. You drag a slider to confirm. Apps that read the Secret pick up the new key when they restart.
 - **Edit**: change models, IP ranges or limits.
+- **View YAML**: the key as a ProxyKey CRD, ready to commit to Git.
 - **Delete**: removes the key and its Secret (also confirmed by dragging).
 
 ## Temporary keys

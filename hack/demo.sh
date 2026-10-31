@@ -102,9 +102,12 @@ MSG
 forward() {
   [[ -f $KUBECONFIG ]] || { echo "No playground yet, run: hack/demo.sh up" >&2; exit 1; }
   trap 'kill 0' EXIT
-  kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082 >/dev/null &
-  kubectl port-forward -n monitoring svc/grafana 3000:3000 >/dev/null &
-  kubectl port-forward -n monitoring svc/prometheus 9090:9090 >/dev/null &
+  # kubectl port-forward exits when its pod goes away (restart, upgrade) or the
+  # connection drops; reconnect instead of leaving the UI unreachable.
+  keep() { while true; do kubectl port-forward "$@" >/dev/null 2>&1; sleep 1; done; }
+  keep -n valetkey-system deploy/valetkey 8082:8082 &
+  keep -n monitoring svc/grafana 3000:3000 &
+  keep -n monitoring svc/prometheus 9090:9090 &
   echo "Dashboard   http://localhost:8082"
   echo "Grafana     http://localhost:3000"
   echo "Prometheus  http://localhost:9090"

@@ -115,6 +115,28 @@ code=$(post "$EKEY" /v1/chat/completions '{"model":"gpt-4o-mini","messages":[]}'
 kubectl wait -n billing pkey/e2e-expiring --for=jsonpath='{.status.conditions[0].reason}'=Expired --timeout=30s >/dev/null
 pass "expired key refused and marked Expired"
 
+step "A provider that rejects its key gets no traffic"
+kubectl apply -f - >/dev/null <<YAML
+apiVersion: v1
+kind: Secret
+metadata: { name: e2e-revoked-key, namespace: $NS }
+stringData: { apiKey: rejected }
+---
+apiVersion: valetkey.dev/v1alpha1
+kind: Channel
+metadata: { name: e2e-revoked, namespace: $NS }
+spec: { type: openai, baseURL: "http://fake-openai.fake-llm.svc", keySecretRef: { name: e2e-revoked-key } }
+YAML
+kubectl wait -n "$NS" channel/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyRejected --timeout=30s >/dev/null ||
+  fail "rejected key not detected: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
+pass "rejected key detected: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
+kubectl patch secret -n "$NS" e2e-revoked-key --type merge -p '{"stringData":{"apiKey":"sk-fixed"}}' >/dev/null
+kubectl wait -n "$NS" channel/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyResolved --timeout=30s >/dev/null ||
+  fail "fixed key still marked: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].reason}')"
+pass "a new key clears it"
+kubectl delete channel -n "$NS" e2e-revoked >/dev/null
+kubectl delete secret -n "$NS" e2e-revoked-key >/dev/null
+
 step "Two replicas"
 kubectl scale -n "$NS" deploy/valetkey --replicas=2 >/dev/null
 kubectl rollout status -n "$NS" deploy/valetkey --timeout=2m >/dev/null

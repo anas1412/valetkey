@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, FileCode } from 'lucide-react'
 import { AdvancedDataTable, type ColumnDef } from '@/components/ui/advanced-data-table'
 import { SplitButton } from '@/components/ui/split-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmSheet } from '@/components/ConfirmSheet'
+import { YamlSheet, type YamlTarget } from '@/components/YamlSheet'
 import { SpendBar } from '@/components/SpendBar'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
@@ -18,6 +19,7 @@ export function TenantsPage() {
   const channels = usePoll(api.channels, 30_000)
   const [editing, setEditing] = useState<Group | 'new'>()
   const [deleting, setDeleting] = useState<Group>()
+  const [yaml, setYaml] = useState<YamlTarget>()
   const notify = useToast()
 
   const columns: ColumnDef<Group>[] = [
@@ -51,7 +53,10 @@ export function TenantsPage() {
       id: 'actions', header: '', align: 'right', priority: 'high',
       cell: ({ row }) => (
         <SplitButton size="sm" variant="secondary" label="Edit" onClick={() => setEditing(row)}
-          options={[{ value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setDeleting(row) }]} />
+          options={[
+            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'groups', path: [row.name], title: `Tenant ${row.name}` }) },
+            { value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setDeleting(row) },
+          ]} />
       ),
     },
   ]
@@ -75,6 +80,7 @@ export function TenantsPage() {
         <p className="mt-4 text-sm text-text-muted text-center">No tenants yet. Create one for each team or app namespace.</p>
       )}
 
+      <YamlSheet target={yaml} onClose={() => setYaml(undefined)} />
       <TenantSheet
         open={!!editing}
         group={editing === 'new' ? undefined : editing}

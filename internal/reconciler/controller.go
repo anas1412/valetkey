@@ -37,6 +37,9 @@ type Controller struct {
 	budgets  *budget.Tracker // optional
 	// IsLeader says whether this replica writes (mints keys, CRD status). Nil = always.
 	IsLeader func() bool
+	// CheckKey asks a provider whether it accepts a channel's key and returns why it
+	// refused (HTTP 401/403), or "". Nil = keys are never checked.
+	CheckKey func(ctx context.Context, ch *types.Channel, key string) (rejected string)
 
 	queue     workqueue.TypedRateLimitingInterface[string]
 	proxyKeys cache.GenericLister
@@ -44,13 +47,14 @@ type Controller struct {
 	ready     atomic.Bool
 	chanMu    sync.Mutex
 	problems  map[string]string // channel → last reported key problem; guarded by chanMu
+	rechecks  map[string]bool   // channels with a pending recheck of a rejected key; guarded by chanMu
 }
 
 func New(cfg config.Config, k *kube.Client, reg *registry.Registry, m *metrics.Metrics, st *stats.Stats, b *budget.Tracker) *Controller {
 	return &Controller{
 		cfg: cfg, kube: k, registry: reg, metrics: m, stats: st, budgets: b,
 		queue:    workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]()),
-		problems: map[string]string{},
+		problems: map[string]string{}, rechecks: map[string]bool{},
 	}
 }
 

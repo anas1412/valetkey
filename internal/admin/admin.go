@@ -50,6 +50,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("PUT /api/v1/channels/{name}", a.guard(a.updateChannel))
 	mux.Handle("DELETE /api/v1/channels/{name}", a.guard(a.deleteChannel))
 	mux.Handle("POST /api/v1/channels/{name}/test", a.guard(a.testChannel))
+	mux.Handle("GET /api/v1/channels/{name}/yaml", a.guard(a.channelYAML))
 	mux.Handle("POST /api/v1/models/discover", a.guard(a.discoverModels))
 
 	mux.Handle("GET /api/v1/groups", a.guard(a.listGroups))
@@ -58,6 +59,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("PUT /api/v1/groups/{name}", a.guard(a.updateGroup))
 	mux.Handle("DELETE /api/v1/groups/{name}", a.guard(a.deleteGroup))
 	mux.Handle("GET /api/v1/groups/{name}/models", a.guard(a.groupModels))
+	mux.Handle("GET /api/v1/groups/{name}/yaml", a.guard(a.groupYAML))
 
 	mux.Handle("GET /api/v1/proxykeys", a.guard(a.listKeys))
 	mux.Handle("POST /api/v1/proxykeys", a.guard(a.createKey))
@@ -66,6 +68,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/v1/proxykeys/{ns}/{name}", a.guard(a.deleteKey))
 	mux.Handle("GET /api/v1/proxykeys/{ns}/{name}/key", a.guard(a.revealKey))
 	mux.Handle("POST /api/v1/proxykeys/{ns}/{name}/rotate", a.guard(a.rotateKey))
+	mux.Handle("GET /api/v1/proxykeys/{ns}/{name}/yaml", a.guard(a.keyYAML))
 }
 
 // guard admits only requests a local browser or valetkeyctl would send. The admin

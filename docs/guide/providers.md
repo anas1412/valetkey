@@ -41,11 +41,19 @@ Under **Advanced**:
 - **Outbound proxy**: send this provider's traffic through an HTTP proxy.
 - **Skip TLS certificate check**: only for self-hosted endpoints with self-signed certificates.
 
-After saving, the provider shows **Ready** once Valetkey has read its key. **Test** confirms the provider accepts it.
+After saving, Valetkey reads the key and asks the provider whether it accepts it, by listing the provider's models (no prompt is sent). The provider shows:
+
+- **Ready**: the key was read and the provider didn't refuse it.
+- **Key rejected**: the provider answered 401 or 403. The provider gets no traffic until its key changes. Valetkey asks again every 10 minutes, in case the refusal was temporary.
+- **Key missing**: the Secret or the key in it can't be found.
+
+The check runs again whenever the key or the base URL changes, and every time you press **Test**. If the provider has no models endpoint or doesn't answer, the provider stays **Ready**: only a clear refusal marks the key.
 
 ## Failover
 
 If a provider answers 429 (rate limited), a 5xx error, or doesn't answer at all, Valetkey retries the request on the tenant's next provider that serves the same model, before anything is sent back to the app. Up to three providers are tried.
+
+A 401 from a provider means its key is bad, not the app's: Valetkey marks the provider **Key rejected** and tries the next one. A 403 also moves on to the next provider, but doesn't mark it, since some providers answer 403 for one model only.
 
 ## OpenAI ↔ Anthropic
 

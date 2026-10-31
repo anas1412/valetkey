@@ -26,6 +26,7 @@ curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/status
 | `POST` | `/api/v1/channels` | Create: `{"name", "spec", "apiKey"}`; `apiKey` is stored in a managed Secret |
 | `GET` / `PUT` / `DELETE` | `/api/v1/channels/{name}` | Read, replace spec (optional new `apiKey`), delete |
 | `POST` | `/api/v1/channels/{name}/test` | Check the key by listing the provider's models |
+| `GET` | `/api/v1/channels/{name}/yaml` | The Channel as YAML, without status or server-managed fields |
 | `POST` | `/api/v1/models/discover` | List a provider's models before saving it: `{"spec", "apiKey"}` or `{"spec", "channel"}` |
 
 ## Tenants
@@ -36,6 +37,7 @@ curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/status
 | `POST` | `/api/v1/groups` | Create: `{"name", "spec"}` |
 | `GET` / `PUT` / `DELETE` | `/api/v1/groups/{name}` | Read, replace spec, delete |
 | `GET` | `/api/v1/groups/{name}/models` | Every model the tenant's keys can use |
+| `GET` | `/api/v1/groups/{name}/yaml` | The Group as YAML, without status or server-managed fields |
 
 ## API keys
 
@@ -46,5 +48,6 @@ curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/status
 | `GET` / `PUT` / `DELETE` | `/api/v1/proxykeys/{ns}/{name}` | Read, replace spec, delete |
 | `GET` | `/api/v1/proxykeys/{ns}/{name}/key` | Reveal the key (audited) |
 | `POST` | `/api/v1/proxykeys/{ns}/{name}/rotate` | Issue a new key; the old one stops working (audited) |
+| `GET` | `/api/v1/proxykeys/{ns}/{name}/yaml` | The ProxyKey as YAML, without status or server-managed fields |
 
 Every write is recorded in the [audit trail](/guide/security#audit-trail).

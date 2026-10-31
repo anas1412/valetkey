@@ -51,6 +51,7 @@ func envFloat(name string, def float64) float64 {
 }
 
 // serve: MODELS (comma-separated), FAIL_RATE (0..1, share of 500 replies), PORT.
+// The API key "rejected" gets 401 on every call, like a revoked key at a real provider.
 func serve() {
 	models := strings.Split(env("MODELS", "gpt-4o,gpt-4o-mini"), ",")
 	failRate := envFloat("FAIL_RATE", 0.02)
@@ -147,7 +148,13 @@ func serve() {
 
 	addr := ":" + env("PORT", "8080")
 	log.Printf("fake provider on %s, models %v", addr, models)
-	log.Fatal(http.ListenAndServe(addr, mux))
+	log.Fatal(http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "Bearer rejected" || r.Header.Get("X-Api-Key") == "rejected" {
+			writeJSON(w, 401, map[string]any{"error": map[string]any{"message": "invalid api key", "type": "invalid_request_error"}})
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})))
 }
 
 // openAIUsage reports usage like OpenAI and DeepSeek do: part of the prompt from the

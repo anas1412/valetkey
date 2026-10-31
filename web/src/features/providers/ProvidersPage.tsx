@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileCode } from 'lucide-react'
 import { AdvancedDataTable, type ColumnDef } from '@/components/ui/advanced-data-table'
 import { SplitButton } from '@/components/ui/split-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
 import { ConfirmSheet } from '@/components/ConfirmSheet'
+import { YamlSheet, type YamlTarget } from '@/components/YamlSheet'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
@@ -16,6 +17,7 @@ type Row = Channel & { state: string }
 
 function stateOf(c: Channel): string {
   if ((c.spec.status ?? 'Enabled') !== 'Enabled') return 'disabled'
+  if (c.keyRejected) return 'key-rejected'
   return c.ready ? 'ready' : 'key-missing'
 }
 
@@ -23,6 +25,7 @@ export function ProvidersPage() {
   const { data, error, reload } = usePoll(api.channels, 10_000)
   const [editing, setEditing] = useState<Channel | 'new'>()
   const [deleting, setDeleting] = useState<Channel>()
+  const [yaml, setYaml] = useState<YamlTarget>()
   const notify = useToast()
 
   const test = async (c: Channel) => {
@@ -32,6 +35,7 @@ export function ProvidersPage() {
         description: `${r.message}${r.latencyMs ? ` · ${r.latencyMs} ms` : ''}`,
         variant: r.success ? 'success' : 'error',
       })
+      void reload() // a test updates the Key rejected badge
     } catch (err) {
       notify('Test failed', { description: (err as Error).message, variant: 'error' })
     }
@@ -62,10 +66,10 @@ export function ProvidersPage() {
     { id: 'priority', header: 'Priority', accessorFn: (r) => r.spec.priority ?? 10, sortable: true, align: 'right', priority: 'low' },
     {
       id: 'state', header: 'Status', accessorKey: 'state', filterable: true, priority: 'high',
-      filterOptions: [{ label: 'Ready', value: 'ready' }, { label: 'Key missing', value: 'key-missing' }, { label: 'Disabled', value: 'disabled' }],
+      filterOptions: [{ label: 'Ready', value: 'ready' }, { label: 'Key rejected', value: 'key-rejected' }, { label: 'Key missing', value: 'key-missing' }, { label: 'Disabled', value: 'disabled' }],
       cell: ({ row }) => row.state === 'ready' ? <Badge tone="success" dot>Ready</Badge>
         : row.state === 'disabled' ? <Badge tone="neutral">Disabled</Badge>
-        : <Badge tone="danger" dot title={row.message}>Key missing</Badge>,
+        : <Badge tone="danger" dot title={row.message}>{row.state === 'key-rejected' ? 'Key rejected' : 'Key missing'}</Badge>,
     },
     {
       id: 'actions', header: '', align: 'right', priority: 'high',
@@ -77,6 +81,7 @@ export function ProvidersPage() {
           onClick={() => void test(row)}
           options={[
             { value: 'edit', label: 'Edit', icon: <Pencil className="size-3.5" />, onSelect: () => setEditing(row) },
+            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'channels', path: [row.name], title: `Provider ${row.name}` }) },
             { value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setDeleting(row) },
           ]}
         />
@@ -104,6 +109,7 @@ export function ProvidersPage() {
         <p className="mt-4 text-sm text-text-muted text-center">No providers yet. Add one with your OpenAI or Anthropic API key to start.</p>
       )}
 
+      <YamlSheet target={yaml} onClose={() => setYaml(undefined)} />
       <ProviderSheet
         open={!!editing}
         channel={editing === 'new' ? undefined : editing}

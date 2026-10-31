@@ -44,6 +44,8 @@ export interface Channel {
   spec: ChannelSpec
   ready: boolean
   message?: string
+  /** The provider answered 401/403 to the key; the provider gets no traffic. */
+  keyRejected?: boolean
 }
 
 export interface GroupSpec {

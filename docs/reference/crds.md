@@ -1,6 +1,6 @@
 # Custom resources
 
-All three live in the API group `valetkey.dev/v1alpha1` and report a standard `Ready` condition in their status. Short names: `chan`, `grp`, `pkey`.
+All three live in the API group `valetkey.dev/v1alpha1` and report a standard `Ready` condition in their status. A Channel's condition reason is `KeyResolved`, `SecretUnavailable` or `KeyRejected` (the provider answered 401 or 403 to the key). Short names: `chan`, `grp`, `pkey`.
 
 ## Channel
 

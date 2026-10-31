@@ -9,6 +9,7 @@ import (
 
 	"github.com/anas1412/valetkey/internal/kube"
 	"github.com/anas1412/valetkey/internal/registry"
+	"github.com/anas1412/valetkey/internal/relay"
 	"github.com/anas1412/valetkey/internal/types"
 )
 
@@ -17,6 +18,8 @@ type channelView struct {
 	Spec    types.ChannelSpec `json:"spec"`
 	Ready   bool              `json:"ready"`
 	Message string            `json:"message,omitempty"`
+	// KeyRejected: the provider answered 401/403 to the key, so it gets no traffic.
+	KeyRejected bool `json:"keyRejected,omitempty"`
 }
 
 // channelInput is what the dashboard sends: the spec plus, optionally, the provider API key to store.
@@ -30,7 +33,11 @@ type channelInput struct {
 func keySecretName(channel string) string { return channel + "-api-key" }
 
 func viewChannel(e registry.ChannelEntry) channelView {
-	return channelView{Name: e.Name(), Spec: e.Channel.Spec, Ready: e.Usable(), Message: e.Channel.Status.Message}
+	msg := e.Channel.Status.Message
+	if e.Rejected != "" {
+		msg = e.Rejected // this pod's verdict, before (or without) the leader's status write
+	}
+	return channelView{Name: e.Name(), Spec: e.Channel.Spec, Ready: e.Usable(), Message: msg, KeyRejected: e.Rejected != ""}
 }
 
 func (a *API) listChannels(w http.ResponseWriter, _ *http.Request) {
@@ -157,6 +164,9 @@ func (a *API) testChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := fetchModels(r.Context(), e.Channel, e.UpstreamKey)
+	if a.Controller != nil {
+		a.Controller.KeyVerdict(e.Name(), relay.RejectedReason(err))
+	}
 	out := map[string]any{"success": err == nil, "latencyMs": res.LatencyMs, "status": res.Status}
 	if err != nil {
 		out["message"] = err.Error()
