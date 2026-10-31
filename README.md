@@ -14,8 +14,7 @@
 <p align="center">
   <a href="https://anas.cyberia.tn/valetkey/"><b>Documentation</b></a> ·
   <a href="https://anas.cyberia.tn/valetkey/guide/quick-start">Quick start</a> ·
-  <a href="https://anas.cyberia.tn/valetkey/guide/kubectl">kubectl &amp; GitOps</a> ·
-  <a href="https://anas.cyberia.tn/valetkey/guide/cli">valetkeyctl</a>
+  <a href="https://anas.cyberia.tn/valetkey/guide/gitops">GitOps</a>
 </p>
 
 ## Why
@@ -81,24 +80,12 @@ curl http://valetkey.valetkey-system:8000/v1/chat/completions \
 
 A complete example is in [`examples/quickstart.yaml`](examples/quickstart.yaml).
 
-## valetkeyctl
-
-A small CLI for status, provider checks and showing or rotating keys. It opens its own `kubectl port-forward`, so your kubeconfig is all it needs:
-
-```bash
-valetkeyctl status
-valetkeyctl test channel openai
-valetkeyctl rotate billing/invoice-api
-```
-
-See the [CLI guide](https://anas.cyberia.tn/valetkey/guide/cli).
-
 ## Dashboard (optional)
 
 A web view of usage, activity, providers, tenants and keys. It listens only inside the pod, with no Service and no password, so you reach it with a port-forward:
 
 ```bash
-kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082    # or: valetkeyctl dashboard
+kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082
 ```
 
 <p align="center">

@@ -10,7 +10,7 @@ The dashboard only listens inside the pod (on `127.0.0.1:8082`), so there's no S
 kubectl port-forward -n valetkey-system deploy/valetkey 8082:8082
 ```
 
-Then open <http://localhost:8082>. Or let the CLI do it: `valetkeyctl dashboard`.
+Then open <http://localhost:8082>.
 
 It follows your system's light or dark setting and works on phones.
 

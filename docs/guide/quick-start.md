@@ -87,7 +87,7 @@ curl http://valetkey.valetkey-system:8000/v1/chat/completions \
 
 ## Next
 
-- [kubectl & GitOps](/guide/kubectl): everyday tasks, Argo CD and Flux.
-- [valetkeyctl](/guide/cli): status, provider checks, showing and rotating keys from the terminal.
+- [GitOps](/guide/gitops): run Valetkey from Git with Argo CD or Flux.
+- [kubectl](/guide/kubectl): the same objects from the terminal, and everyday tasks.
 - [Dashboard](/guide/dashboard): an optional web view, through port-forward.
 - [Using a key in your app](/guide/using-keys): SDK examples for OpenAI and Anthropic.

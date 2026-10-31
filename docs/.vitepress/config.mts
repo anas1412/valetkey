@@ -25,13 +25,13 @@ export default defineConfig({
         items: [
           { text: 'What is Valetkey?', link: '/guide/what-is-valetkey' },
           { text: 'Quick start', link: '/guide/quick-start' },
+          { text: 'GitOps', link: '/guide/gitops' },
         ],
       },
       {
         text: 'Working with Valetkey',
         items: [
-          { text: 'kubectl & GitOps', link: '/guide/kubectl' },
-          { text: 'valetkeyctl CLI', link: '/guide/cli' },
+          { text: 'kubectl', link: '/guide/kubectl' },
           { text: 'Providers', link: '/guide/providers' },
           { text: 'Tenants', link: '/guide/tenants' },
           { text: 'API keys', link: '/guide/api-keys' },

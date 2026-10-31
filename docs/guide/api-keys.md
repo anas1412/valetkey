@@ -24,7 +24,7 @@ kubectl apply -f key.yaml
 kubectl get pkey invoice-api -n billing     # READY turns true within a second or two
 ```
 
-Disable, rotate and revoke from the terminal: see [kubectl & GitOps](/guide/kubectl#everyday-tasks) or [`valetkeyctl rotate`](/guide/cli#rotate-a-key).
+Disable, rotate and revoke from the terminal or from Git: see [kubectl](/guide/kubectl#everyday-tasks) and [GitOps](/guide/gitops#everyday-changes).
 
 ## In the dashboard: create a key
 

@@ -107,7 +107,7 @@ The last fetched price list is kept in the ConfigMap `valetkey-pricing`, so a re
 
 DeepSeek charges twice as much at peak times: **01:00 to 04:00 and 06:00 to 10:00 UTC, Monday to Friday**. Weekends and Chinese public holidays are off-peak all day. Valetkey reads these hours from DeepSeek's pricing page on every refresh. Holidays are checked against the date in Beijing.
 
-The Pricing page and `valetkeyctl pricing` show whether a model is at peak price right now and when that changes. If DeepSeek's page can't be read, Valetkey uses the schedule above and shows a warning on the Pricing page.
+The Pricing page shows whether a model is at peak price right now and when that changes. If DeepSeek's page can't be read, Valetkey uses the schedule above and shows a warning on the Pricing page.
 
 ## Your own prices
 
@@ -132,7 +132,6 @@ A key or tenant with a budget can only use models with a known price, so the bud
 
 - `kubectl get pkey -A` and `kubectl get grp -n valetkey-system` show **Spent** and **Budget** columns. The exact amount is in `status.spend`.
 - The dashboard shows a spend bar on keys and tenants, a Spend card on the Overview, the cost of each request in Activity, and a **Pricing** page.
-- `valetkeyctl spend` and `valetkeyctl pricing` show the same in the terminal.
 - Prometheus: `valetkey_cost_usd_total`, `valetkey_budget_spent_usd`, `valetkey_budget_usd` and `valetkey_budget_rejections_total`. The [Grafana dashboard](/guide/usage-history#_3-add-the-grafana-dashboard) has spend per tenant and budget use.
 
 Spend is saved to the key's and tenant's status every 5 seconds and when Valetkey stops, and is loaded back when it starts. A crash (not a normal restart) can lose up to 5 seconds of spend.

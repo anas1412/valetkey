@@ -65,29 +65,6 @@ func (a *API) activity(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, map[string]any{"requests": a.Stats.Requests(), "events": a.Stats.Events()})
 }
 
-// status is the compact summary used by valetkeyctl.
-func (a *API) status(w http.ResponseWriter, _ *http.Request) {
-	channels, groups, keys := []any{}, []any{}, []any{}
-	for _, e := range a.Registry.Channels() {
-		models := e.Channel.Spec.Models
-		if models == nil {
-			models = []string{}
-		}
-		channels = append(channels, map[string]any{"name": e.Name(), "type": e.Channel.Spec.Type, "models": models, "ready": e.UpstreamKey != ""})
-	}
-	for _, g := range a.Registry.Groups() {
-		st := g.Spec.Status
-		if st == "" {
-			st = "Enabled"
-		}
-		groups = append(groups, map[string]any{"name": g.Name, "status": st, "channels": g.Spec.ChannelRefs})
-	}
-	for _, pk := range a.Controller.ProxyKeys() {
-		keys = append(keys, map[string]any{"namespace": pk.Namespace, "name": pk.Name, "group": pk.Namespace, "ready": pk.Status.Ready})
-	}
-	writeJSON(w, 200, map[string]any{"channels": channels, "groups": groups, "keys": keys})
-}
-
 // namespaces lists namespaces for the tenant picker, flagging which already have a Group.
 func (a *API) namespaces(w http.ResponseWriter, r *http.Request) {
 	names, err := a.Kube.Namespaces(r.Context())

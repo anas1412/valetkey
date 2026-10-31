@@ -101,7 +101,9 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	if secret != nil && secret.Data["VALETKEY_KEY"] != "" {
 		secretHash = keys.Hash(secret.Data["VALETKEY_KEY"])
 	}
-	needsKey := secretHash == "" || (keyHash != "" && secretHash != keyHash)
+	rotate := pk.Annotations[types.RotateAnnotation]
+	rotateDue := rotate != "" && rotate != pk.Status.Rotation
+	needsKey := secretHash == "" || (keyHash != "" && secretHash != keyHash) || rotateDue
 	if needsKey && !c.leading() {
 		// The leader mints it; look again shortly.
 		c.queue.AddAfter(id, 3*time.Second)
@@ -113,8 +115,12 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		if err := c.writeTenantSecret(ctx, pk, secretName, virtual, channels[0].Name(), group); err != nil {
 			return err
 		}
-		slog.Info("minted key", "proxykey", id, "secret", secretName)
-		c.stats.Event("info", "key-minted", fmt.Sprintf("new key for %s (secret %s)", id, secretName))
+		slog.Info("minted key", "proxykey", id, "secret", secretName, "rotation", rotateDue)
+		msg := fmt.Sprintf("new key for %s (secret %s)", id, secretName)
+		if rotateDue && secretHash != "" {
+			msg = fmt.Sprintf("rotated key for %s (%s=%s); the old key no longer works", id, types.RotateAnnotation, rotate)
+		}
+		c.stats.Event("info", "key-minted", msg)
 		c.metrics.KeysMinted.WithLabelValues(group).Inc()
 	} else if keyHash == "" {
 		keyHash = secretHash
@@ -132,7 +138,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	c.refreshKeyGauge()
 
 	next := status.Ready(pk.Status, true, "Active", "Active", pk.Generation)
-	next.KeyHash, next.SecretName = keyHash, secretName
+	next.KeyHash, next.SecretName, next.Rotation = keyHash, secretName, rotate
 	return c.setStatus(ctx, pk, next)
 }
 

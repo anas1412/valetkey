@@ -1,8 +1,8 @@
-# kubectl & GitOps
+# kubectl
 
-This is the main way to run Valetkey: providers, tenants and keys are plain Kubernetes objects, so they live in Git and go through `kubectl`, Helm, Kustomize, Argo CD or Flux like the rest of your cluster. The [dashboard](/guide/dashboard) is an optional view on top.
+Providers, tenants and keys are plain Kubernetes objects. For running them from Git with Argo CD or Flux, see [GitOps](/guide/gitops); this page uses the same objects straight from the terminal. The [dashboard](/guide/dashboard) is an optional view on top.
 
-This guide sets up one provider, one tenant and one key from YAML, then covers everyday tasks.
+This guide sets up one provider, one tenant and one key from YAML, then covers everyday tasks. Save the YAML files wherever you like (a folder in your infrastructure repository is a good place) and apply them with `kubectl apply -f`. For a full repository layout with Argo CD or Flux, see [GitOps](/guide/gitops#repository-layout).
 
 ## 1. Store the provider's API key
 
@@ -124,14 +124,13 @@ kubectl patch pkey invoice-api -n billing --type merge -p '{"spec":{"rpm":300}}'
 
 ### Rotate a key
 
-Delete its Secret, then touch the `ProxyKey` so Valetkey notices right away (otherwise it notices at the next resync, within 10 minutes):
+Set the `valetkey.dev/rotate` annotation to a new value, for example today's date:
 
 ```bash
-kubectl delete secret invoice-api-valetkey -n billing
-kubectl annotate pkey invoice-api -n billing valetkey.dev/rotated-at="$(date +%s)" --overwrite
+kubectl annotate pkey invoice-api -n billing valetkey.dev/rotate=2026-11-01 --overwrite
 ```
 
-The old key stops working and a new one is written to the same Secret. [`valetkeyctl rotate`](/guide/cli#rotate-a-key) does this in one step.
+Valetkey issues a new key right away and writes it to the same Secret; the old key stops working. Any new value rotates again; the same value does nothing. The dashboard's **Rotate key** does the same in one click.
 
 ### Revoke a key
 
@@ -154,13 +153,8 @@ kubectl create secret generic openai-key -n valetkey-system \
   --from-literal=apiKey=sk-NEW_KEY --dry-run=client -o yaml | kubectl replace -f -
 ```
 
-## GitOps (Argo CD, Flux)
+## GitOps
 
-Commit the `Channel`, `Group` and `ProxyKey` objects like any other manifests. A few things to keep in mind:
-
-- **Never commit provider keys in plain Secrets.** Use whatever you already use for secrets in Git: Sealed Secrets, External Secrets, or SOPS.
-- **Don't manage the generated `<name>-valetkey` Secrets in Git.** Valetkey creates them, and they're owned by their `ProxyKey`, so Argo CD shows them as children of the key, and deleting the key deletes them.
-- **Valetkey writes `status`** on all three kinds. Argo CD and Flux ignore status differences by default, so your apps stay in sync.
-- **The dashboard and GitOps can coexist,** but changes made in the dashboard will be reverted by your GitOps tool on its next sync if the object is also in Git. Pick one owner per object.
+To keep these objects in Git and apply them with Argo CD or Flux, including encrypted provider keys and health checks, see [GitOps](/guide/gitops).
 
 See [Custom resources](/reference/crds) for every field.

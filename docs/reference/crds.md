@@ -34,9 +34,6 @@ A tenant. Namespace: the operator namespace. **Its name is the tenant namespace.
 | `budget.usd` | string | none | Dollar budget per period for all the tenant's keys, e.g. `"200"` |
 | `budget.period` | `daily` \| `weekly` \| `monthly` | `monthly` | |
 | `budget.timezone` | string | `UTC` | IANA time zone where periods start |
-| `modelBudgets` | map | none | Budgets for single models, e.g. `claude-opus-4-5: {usd: "5", period: daily}` |
-| `maxTokens` | int | none | Output cap added to requests that don't set one |
-| `expiresAt` | RFC 3339 time | never | When the key stops working |
 
 ## ProxyKey
 
@@ -52,8 +49,13 @@ An API key. Namespace: the tenant's namespace.
 | `budget.usd` | string | none | Dollar budget per period for this key, e.g. `"20"` |
 | `budget.period` | `daily` \| `weekly` \| `monthly` | `monthly` | |
 | `budget.timezone` | string | `UTC` | IANA time zone where periods start |
+| `modelBudgets` | map | none | Budgets for single models, e.g. `claude-opus-4-5: {usd: "5", period: daily}` |
+| `maxTokens` | int | none | Output cap added to requests that don't set one |
+| `expiresAt` | RFC 3339 time | never | When the key stops working |
 
-Status fields: `ready`, `message`, `conditions`, `secretName`, `keyHash` (SHA-256 of the key; the key itself is only in the Secret), `spend` (current period: `usd` across all replicas, `periodStart`, `requests`, and each replica's share under `pods`) and `modelSpend` (the same per model in `modelBudgets`). Groups have `spend` too.
+Annotation `valetkey.dev/rotate`: set it to a new value to issue a new key (see [Rotating a key](/guide/gitops#rotating-a-key)).
+
+Status fields: `ready`, `message`, `conditions`, `secretName`, `keyHash` (SHA-256 of the key; the key itself is only in the Secret), `rotation` (the `valetkey.dev/rotate` value the current key was issued for), `spend` (current period: `usd` across all replicas, `periodStart`, `requests`, and each replica's share under `pods`) and `modelSpend` (the same per model in `modelBudgets`). Groups have `spend` too.
 
 ## Full example
 

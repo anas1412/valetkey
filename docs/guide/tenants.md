@@ -33,4 +33,4 @@ The tenant is **Ready** when it's enabled and at least one of its providers is u
 
 - A tenant can only reach the providers you assigned to it.
 - Keys can't pick another tenant: the tenant is always the key's own namespace.
-- Tenants don't create or change keys. You create them (in YAML, with `valetkeyctl` or in the dashboard) and hand each key to the person or app that uses it. All a tenant ever holds is the key itself.
+- Tenants don't create or change keys. You create them (in YAML or in the dashboard) and hand each key to the person or app that uses it. All a tenant ever holds is the key itself.

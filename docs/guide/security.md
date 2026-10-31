@@ -9,7 +9,7 @@ Valetkey doesn't have its own users or passwords. Everything is decided by Kuber
 | Add or change providers and tenants | write access to `channels` / `groups` in the Valetkey namespace |
 | Issue, change or revoke keys | write access to `proxykeys` in the tenant's namespace |
 | Read a tenant's key | read access to Secrets in the tenant's namespace |
-| Use the dashboard, admin API or `valetkeyctl` | `pods/portforward` on the Valetkey pod |
+| Use the dashboard or admin API | `pods/portforward` on the Valetkey pod |
 | Call an LLM | a virtual key |
 
 So the usual tools apply: grant roles to groups from your cluster's sign-in, and the Kubernetes audit log records who changed what and who opened a port-forward.
@@ -31,7 +31,7 @@ Because the admin API trusts anyone who can port-forward, it also has to make su
 - it only answers when the address is `localhost`, `127.0.0.1` or `[::1]`, which blocks DNS-rebinding pages;
 - every request must carry an `X-Valetkey-Request` header, which other websites can't add, which blocks cross-site requests.
 
-The dashboard and `valetkeyctl` send the header for you. Scripts using `curl` add `-H "X-Valetkey-Request: 1"`.
+The dashboard sends the header for you. Scripts using `curl` add `-H "X-Valetkey-Request: 1"`.
 
 ## Audit trail
 

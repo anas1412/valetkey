@@ -29,10 +29,11 @@ engine() {
   fi
 }
 
-# Builds an image and loads it into the kind nodes.
+# Builds an image and loads it into the kind nodes. With VALETKEY_PREBUILT=1 the
+# images must already exist (CI builds them with a layer cache).
 build() {
   local name=$1 dockerfile=$2
-  "$ENGINE" build -q -t "localhost/$name:dev" -f "$ROOT/$dockerfile" "$ROOT" >/dev/null
+  [[ -n ${VALETKEY_PREBUILT:-} ]] || "$ENGINE" build -q -t "localhost/$name:dev" -f "$ROOT/$dockerfile" "$ROOT" >/dev/null
   "$ENGINE" save -o "$STATE/$name.tar" "localhost/$name:dev"
   kind load image-archive "$STATE/$name.tar" --name "$CLUSTER"
   rm -f "$STATE/$name.tar"

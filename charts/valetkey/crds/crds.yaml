@@ -268,6 +268,9 @@ spec:
                   type: string
                 secretName:
                   type: string
+                rotation:
+                  type: string
+                  description: "The valetkey.dev/rotate annotation value the current key was issued for."
                 spend:
                   type: object
                   description: "Spend in the current budget period, written by Valetkey. usd is the total of all replicas."

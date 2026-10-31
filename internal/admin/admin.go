@@ -1,4 +1,4 @@
-// Package admin serves the management API used by the dashboard and valetkeyctl.
+// Package admin serves the management API used by the dashboard.
 // CRDs stay the source of truth: handlers write CRs and Secrets, and the
 // informers update the registry.
 package admin
@@ -40,7 +40,6 @@ type API struct {
 func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/overview", a.guard(a.overview))
 	mux.Handle("GET /api/v1/activity", a.guard(a.activity))
-	mux.Handle("GET /api/v1/status", a.guard(a.status))
 	mux.Handle("GET /api/v1/namespaces", a.guard(a.namespaces))
 	mux.Handle("GET /api/v1/pricing", a.guard(a.pricing))
 
@@ -71,7 +70,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/proxykeys/{ns}/{name}/yaml", a.guard(a.keyYAML))
 }
 
-// guard admits only requests a local browser or valetkeyctl would send. The admin
+// guard admits only requests the dashboard or a local script would send. The admin
 // API has no password: it listens on the pod's loopback, so reaching it at all takes
 // `kubectl port-forward` (Kubernetes RBAC). These checks stop other websites from
 // using an admin's open port-forward:

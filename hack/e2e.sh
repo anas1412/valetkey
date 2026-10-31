@@ -97,6 +97,29 @@ code=$(post "$KEY" /v1/chat/completions '{"model":"gpt-4o","messages":[{"role":"
 [[ $code == 429 ]] || fail "after a restart the budget is forgotten: HTTP $code"
 pass "budget still used up after the restart"
 
+step "Rotate a key with the valetkey.dev/rotate annotation"
+kubectl apply -f - >/dev/null <<YAML
+apiVersion: valetkey.dev/v1alpha1
+kind: ProxyKey
+metadata: { name: e2e-rotate, namespace: billing }
+spec: {}
+YAML
+OLD=$(key_of billing e2e-rotate)
+sleep 2
+kubectl annotate pkey -n billing e2e-rotate valetkey.dev/rotate=2026-11-01 >/dev/null
+for _ in $(seq 1 30); do NEW=$(key_of billing e2e-rotate); [[ $NEW != "$OLD" ]] && break; sleep 1; done
+[[ $NEW != "$OLD" ]] || fail "key not rotated"
+sleep 2
+code=$(post "$OLD" /v1/chat/completions '{"model":"gpt-4o-mini","messages":[]}')
+[[ $code == 401 ]] || fail "old key after rotation got HTTP $code"
+code=$(post "$NEW" /v1/chat/completions '{"model":"gpt-4o-mini","messages":[]}')
+[[ $code == 200 ]] || fail "new key after rotation got HTTP $code $(cat "$BODY_FILE")"
+kubectl patch pkey -n billing e2e-rotate --type merge -p '{"spec":{"rpm":600}}' >/dev/null
+sleep 3
+[[ $(key_of billing e2e-rotate) == "$NEW" ]] || fail "a spec change rotated the key again"
+kubectl delete pkey -n billing e2e-rotate >/dev/null
+pass "a new annotation value issues a new key and the old one stops working; other changes keep the key"
+
 step "Key expiry"
 expires=$(date -u -d '+25 seconds' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+25S +%Y-%m-%dT%H:%M:%SZ)
 kubectl apply -f - >/dev/null <<YAML

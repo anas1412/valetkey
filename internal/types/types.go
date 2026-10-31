@@ -39,12 +39,18 @@ type Condition struct {
 }
 
 // Status is the status block shared by all three CRDs (ProxyKey adds two fields).
+// RotateAnnotation on a ProxyKey: setting it to a new value issues a new key, so
+// keys can be rotated from Git.
+const RotateAnnotation = "valetkey.dev/rotate"
+
 type Status struct {
 	Conditions []Condition `json:"conditions,omitempty"`
 	Ready      bool        `json:"ready"`
 	Message    string      `json:"message,omitempty"`
 	KeyHash    string      `json:"keyHash,omitempty"`
 	SecretName string      `json:"secretName,omitempty"`
+	// Rotation is the RotateAnnotation value the current key was issued for (ProxyKey).
+	Rotation string `json:"rotation,omitempty"`
 	// Spend is the current period's spend (ProxyKey and Group).
 	Spend *Spend `json:"spend,omitempty"`
 	// ModelSpend is the spend per model with a budget in spec.modelBudgets (ProxyKey).

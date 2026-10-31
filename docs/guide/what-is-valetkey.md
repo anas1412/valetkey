@@ -26,9 +26,9 @@ Tenant app ──POST /v1/chat/completions──▶ Valetkey ──▶ OpenAI / 
 |---|---|---|
 | **Provider** (`Channel`) | You (the admin) | An upstream API and its real key: OpenAI, Anthropic, or any OpenAI-compatible endpoint. |
 | **Tenant** (`Group`) | You | A namespace allowed to use some providers, with optional limit multipliers. |
-| **API key** (`ProxyKey`) | You or the tenant | A virtual key in the tenant's namespace, with its own rules. Valetkey writes the key into a Secret next to it. |
+| **API key** (`ProxyKey`) | You | A virtual key in the tenant's namespace, with its own rules. Valetkey writes the key into a Secret next to it, and you hand it to the tenant. |
 
-You manage all three as YAML with [`kubectl` or GitOps](/guide/kubectl), check on them with [`valetkeyctl`](/guide/cli), and optionally look at them in the [dashboard](/guide/dashboard).
+You manage all three as YAML, from Git with [Argo CD or Flux](/guide/gitops) or with [`kubectl`](/guide/kubectl), and optionally look at them in the [dashboard](/guide/dashboard).
 
 ## What it is not
 

@@ -17,7 +17,6 @@ docs/                this site (VitePress)
 charts/valetkey/     Helm chart (CRDs in crds/, Grafana dashboard in dashboards/)
 hack/                playground (demo.sh) and its fake provider
 examples/            sample Channel, Group and ProxyKey objects
-scripts/valetkeyctl  CLI helper
 ```
 
 ## Build and test
