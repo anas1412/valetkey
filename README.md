@@ -39,11 +39,11 @@
 ## Install
 
 ```bash
-helm install valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 \
+helm install valetkey oci://ghcr.io/anas1412/charts/valetkey \
   -n valetkey-system --create-namespace
 ```
 
-Without Helm: `kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/download/v0.2.0/valetkey.yaml`. The image is `ghcr.io/anas1412/valetkey:0.2.0`. See [Helm values](https://anas.cyberia.tn/valetkey/reference/helm).
+Without Helm: `kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/latest/download/valetkey.yaml`. The image is `ghcr.io/anas1412/valetkey` (tagged `latest` and with each version). See [Helm values](https://anas.cyberia.tn/valetkey/reference/helm).
 
 ## Configure with CRDs
 

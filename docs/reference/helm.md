@@ -1,14 +1,14 @@
 # Helm values
 
 ```bash
-helm install valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 \
+helm install valetkey oci://ghcr.io/anas1412/charts/valetkey \
   -n valetkey-system --create-namespace -f values.yaml
 ```
 
 The chart installs the custom resource definitions (from its `crds/` folder), RBAC, the Deployment and the `valetkey` Service. Helm installs CRDs on first install but doesn't upgrade them; after an upgrade that changes them, apply them again:
 
 ```bash
-helm show crds oci://ghcr.io/anas1412/charts/valetkey --version <new> | kubectl apply -f -
+helm show crds oci://ghcr.io/anas1412/charts/valetkey | kubectl apply --server-side -f -
 ```
 
 ## Values
@@ -48,8 +48,8 @@ See [Scaling](/guide/limits#scaling) for running more than one replica.
 Helm installs the CRDs on the first install and never updates them. Apply the new version's CRDs before upgrading, so new fields (like budgets) are kept:
 
 ```bash
-kubectl apply --server-side -f https://raw.githubusercontent.com/anas1412/valetkey/v0.2.0/charts/valetkey/crds/crds.yaml
-helm upgrade valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 -n valetkey-system
+helm show crds oci://ghcr.io/anas1412/charts/valetkey | kubectl apply --server-side -f -
+helm upgrade valetkey oci://ghcr.io/anas1412/charts/valetkey -n valetkey-system
 ```
 
 ## Without Helm
@@ -58,7 +58,7 @@ Each release also ships plain manifests rendered from the chart:
 
 ```bash
 kubectl create namespace valetkey-system
-kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/download/v0.2.0/valetkey.yaml
+kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/latest/download/valetkey.yaml
 ```
 
 ## GitOps

@@ -7,13 +7,13 @@ You need a Kubernetes cluster (1.26+), `kubectl` and, for the recommended instal
 ::: code-group
 
 ```bash [Helm (recommended)]
-helm install valetkey oci://ghcr.io/anas1412/charts/valetkey --version 0.2.0 \
+helm install valetkey oci://ghcr.io/anas1412/charts/valetkey \
   -n valetkey-system --create-namespace
 ```
 
 ```bash [kubectl]
 kubectl create namespace valetkey-system
-kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/download/v0.2.0/valetkey.yaml
+kubectl apply -n valetkey-system -f https://github.com/anas1412/valetkey/releases/latest/download/valetkey.yaml
 ```
 
 :::
