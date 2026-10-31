@@ -34,8 +34,8 @@ func TestUsageBufferedAndStreamed(t *testing.T) {
 
 func TestJoinURL(t *testing.T) {
 	for base, want := range map[string]string{
-		"https://api.openai.com":        "https://api.openai.com/v1/chat/completions",
-		"https://openrouter.ai/api/":    "https://openrouter.ai/api/v1/chat/completions",
+		"https://api.openai.com":         "https://api.openai.com/v1/chat/completions",
+		"https://openrouter.ai/api/":     "https://openrouter.ai/api/v1/chat/completions",
 		"https://api.groq.com/openai/v1": "https://api.groq.com/openai/v1/chat/completions",
 	} {
 		if got, _ := JoinURL(base, "/v1/chat/completions"); got != want {

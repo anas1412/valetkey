@@ -14,10 +14,10 @@ const (
 )
 
 var (
-	ChannelGVR  = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "channels"}
-	GroupGVR    = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "groups"}
-	ProxyKeyGVR = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "proxykeys"}
-	SecretGVR   = schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
+	ChannelGVR   = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "channels"}
+	GroupGVR     = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "groups"}
+	ProxyKeyGVR  = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "proxykeys"}
+	SecretGVR    = schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
 	NamespaceGVR = schema.GroupVersionResource{Version: "v1", Resource: "namespaces"}
 )
 

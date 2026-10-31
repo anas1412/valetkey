@@ -26,12 +26,14 @@ func TestOpenAIRequestToAnthropic(t *testing.T) {
 	}
 	b, _ := json.Marshal(out)
 	var got struct {
-		System        string `json:"system"`
-		MaxTokens     float64 `json:"max_tokens"`
-		StopSequences []string `json:"stop_sequences"`
+		System        string            `json:"system"`
+		MaxTokens     float64           `json:"max_tokens"`
+		StopSequences []string          `json:"stop_sequences"`
 		ToolChoice    map[string]string `json:"tool_choice"`
-		Tools         []struct{ InputSchema map[string]any `json:"input_schema"` } `json:"tools"`
-		Messages      []struct {
+		Tools         []struct {
+			InputSchema map[string]any `json:"input_schema"`
+		} `json:"tools"`
+		Messages []struct {
 			Role    string           `json:"role"`
 			Content []map[string]any `json:"content"`
 		} `json:"messages"`
@@ -71,7 +73,7 @@ func TestAnthropicResponseToOpenAI(t *testing.T) {
 		Object  string `json:"object"`
 		Choices []struct {
 			Message struct {
-				Content   string `json:"content"`
+				Content   string                                          `json:"content"`
 				ToolCalls []struct{ Function struct{ Arguments string } } `json:"tool_calls"`
 			} `json:"message"`
 			FinishReason string `json:"finish_reason"`

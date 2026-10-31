@@ -1,7 +1,10 @@
 // Package config reads operator settings from the environment.
 package config
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 type Config struct {
 	// Namespace where Channel/Group CRDs and provider Secrets live.
@@ -25,8 +28,9 @@ func FromEnv() Config {
 		ProxyURL:          env("PROXY_URL", "http://llmproxy.llmproxy-system.svc.cluster.local:8000"),
 		ProxyAddr:         ":" + env("PROXY_PORT", "8000"),
 		AdminAddr:         ":" + env("ADMIN_PORT", env("HEALTH_PORT", "8081")),
-		AdminKey:          os.Getenv("ADMIN_KEY"),
-		TrustProxy:        os.Getenv("TRUST_PROXY"),
+		// Trimmed: Secrets created with --from-file usually end in a newline.
+		AdminKey:   strings.TrimSpace(os.Getenv("ADMIN_KEY")),
+		TrustProxy: os.Getenv("TRUST_PROXY"),
 	}
 }
 
