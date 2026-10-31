@@ -10,13 +10,13 @@
 </p>
 
 <p align="center">
-  <a href="https://anas1412.github.io/llmp/"><b>Documentation</b></a> ·
-  <a href="https://anas1412.github.io/llmp/guide/quick-start">Quick start</a> ·
-  <a href="https://anas1412.github.io/llmp/guide/dashboard">Dashboard tour (video)</a>
+  <a href="https://anas.cyberia.tn/llmp/"><b>Documentation</b></a> ·
+  <a href="https://anas.cyberia.tn/llmp/guide/quick-start">Quick start</a> ·
+  <a href="https://anas.cyberia.tn/llmp/guide/dashboard">Dashboard tour (video)</a>
 </p>
 
 <p align="center">
-  <a href="https://anas1412.github.io/llmp/guide/dashboard">
+  <a href="https://anas.cyberia.tn/llmp/guide/dashboard">
     <img src="docs/public/screenshots/overview-dark.png" alt="LLMP dashboard" width="900">
   </a>
 </p>
@@ -69,7 +69,7 @@ curl http://llmproxy.llmproxy-system:8000/v1/chat/completions \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-The [documentation](https://anas1412.github.io/llmp/) covers providers, tenants, keys, SDK usage, limits, security, monitoring, the custom resources and the admin API.
+The [documentation](https://anas.cyberia.tn/llmp/) covers providers, tenants, keys, SDK usage, limits, security, monitoring, the custom resources and the admin API.
 
 ## Development
 
@@ -81,7 +81,7 @@ go test ./internal/...
 go run ./cmd/llmproxy        # uses your current kubeconfig
 ```
 
-See [Development](https://anas1412.github.io/llmp/reference/development) for local clusters, the docs site and regenerating screenshots and the video.
+See [Development](https://anas.cyberia.tn/llmp/reference/development) for local clusters, the docs site and regenerating screenshots and the video.
 
 ## License
 

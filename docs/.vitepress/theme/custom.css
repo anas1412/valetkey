@@ -32,3 +32,13 @@ html:not(.dark) .dark-only {
   color: var(--vp-c-text-2);
   font-size: 14px;
 }
+
+/* Line icons on the home page feature cards */
+.VPFeature .icon {
+  color: var(--vp-c-brand-1);
+}
+
+.VPFeature .icon svg {
+  width: 22px;
+  height: 22px;
+}

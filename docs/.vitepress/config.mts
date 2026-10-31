@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
 
-// Served from GitHub Pages at /llmp/; override with DOCS_BASE for other hosts.
+// Served from GitHub Pages (anas.cyberia.tn/llmp/); override with DOCS_BASE for other hosts.
 const base = process.env.DOCS_BASE ?? '/llmp/'
 
 export default defineConfig({
