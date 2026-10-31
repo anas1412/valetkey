@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore: ['**.md', 'docs/**', '.gitattributes', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', '.gitattributes', 'LICENSE']
 
 jobs:
   test:
