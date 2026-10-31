@@ -11,25 +11,25 @@ import { SpendBar } from '@/components/SpendBar'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
-import type { Group } from '@/lib/types'
+import type { Tenant } from '@/lib/types'
 import { TenantSheet } from './TenantSheet'
 
 export function TenantsPage() {
-  const groups = usePoll(api.groups, 10_000)
-  const channels = usePoll(api.channels, 30_000)
-  const [editing, setEditing] = useState<Group | 'new'>()
-  const [deleting, setDeleting] = useState<Group>()
+  const tenants = usePoll(api.tenants, 10_000)
+  const providers = usePoll(api.providers, 30_000)
+  const [editing, setEditing] = useState<Tenant | 'new'>()
+  const [deleting, setDeleting] = useState<Tenant>()
   const [yaml, setYaml] = useState<YamlTarget>()
   const notify = useToast()
 
-  const columns: ColumnDef<Group>[] = [
+  const columns: ColumnDef<Tenant>[] = [
     { id: 'name', header: 'Tenant', accessorKey: 'name', sortable: true, priority: 'high',
       cell: ({ value }) => <span className="font-medium text-text-primary">{value}</span> },
     {
-      id: 'channels', header: 'Providers', accessorFn: (g) => g.spec.channelRefs.join(', '), priority: 'medium',
+      id: 'providers', header: 'Providers', accessorFn: (g) => g.spec.providers.join(', '), priority: 'medium',
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
-          {row.spec.channelRefs.map((c) => <Badge key={c} tone="neutral" variant="outline">{c}</Badge>)}
+          {row.spec.providers.map((c) => <Badge key={c} tone="neutral" variant="outline">{c}</Badge>)}
         </div>
       ),
     },
@@ -54,7 +54,7 @@ export function TenantsPage() {
       cell: ({ row }) => (
         <SplitButton size="sm" variant="secondary" label="Edit" onClick={() => setEditing(row)}
           options={[
-            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'groups', path: [row.name], title: `Tenant ${row.name}` }) },
+            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'tenants', path: [row.name], title: `Tenant ${row.name}` }) },
             { value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setDeleting(row) },
           ]} />
       ),
@@ -69,24 +69,24 @@ export function TenantsPage() {
         actions={<Button variant="primary" leftIcon={<Plus className="size-4" />} onClick={() => setEditing('new')}>Create tenant</Button>}
       />
       <AdvancedDataTable
-        data={groups.data ?? []}
+        data={tenants.data ?? []}
         columns={columns}
         getRowId={(g) => g.name}
-        isLoading={groups.loading}
-        error={groups.error}
+        isLoading={tenants.loading}
+        error={tenants.error}
         searchPlaceholder="Search tenants…"
       />
-      {groups.data?.length === 0 && (
+      {tenants.data?.length === 0 && (
         <p className="mt-4 text-sm text-text-muted text-center">No tenants yet. Create one for each team or app namespace.</p>
       )}
 
       <YamlSheet target={yaml} onClose={() => setYaml(undefined)} />
       <TenantSheet
         open={!!editing}
-        group={editing === 'new' ? undefined : editing}
-        channels={channels.data ?? []}
+        tenant={editing === 'new' ? undefined : editing}
+        providers={providers.data ?? []}
         onClose={() => setEditing(undefined)}
-        onSaved={groups.reload}
+        onSaved={tenants.reload}
       />
       <ConfirmSheet
         open={!!deleting}
@@ -94,9 +94,9 @@ export function TenantsPage() {
         description="Every API key in this namespace stops working until a tenant with the same name exists again. The keys themselves are kept."
         onClose={() => setDeleting(undefined)}
         onConfirm={async () => {
-          await api.deleteGroup(deleting!.name)
+          await api.deleteTenant(deleting!.name)
           notify('Tenant deleted', { description: deleting!.name })
-          void groups.reload()
+          void tenants.reload()
         }}
       />
     </>

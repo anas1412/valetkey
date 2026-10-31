@@ -1,15 +1,15 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: channels.valetkey.dev
+  name: providers.valetkey.dev
 spec:
   group: valetkey.dev
   scope: Namespaced
   names:
-    kind: Channel
-    plural: channels
-    singular: channel
-    shortNames: [chan]
+    kind: Provider
+    plural: providers
+    singular: provider
+    shortNames: [prov]
   versions:
     - name: v1alpha1
       served: true
@@ -71,7 +71,7 @@ spec:
                     type: string
                 proxyURL:
                   type: string
-                  description: "Outbound HTTP proxy for this channel, e.g. http://proxy:3128"
+                  description: "Outbound HTTP proxy for this provider, e.g. http://proxy:3128"
                 skipTLSVerify:
                   type: boolean
                   description: "Skip upstream TLS certificate verification (self-signed endpoints only)"
@@ -82,7 +82,7 @@ spec:
                     type: string
                 pricing:
                   type: object
-                  description: "How requests on this channel are priced. Without it, prices come from the live catalogue for the provider guessed from baseURL."
+                  description: "How requests to this provider are priced. Without it, prices come from the live catalogue entry guessed from baseURL."
                   properties:
                     provider:
                       type: string
@@ -192,11 +192,11 @@ spec:
                 rpm:
                   type: integer
                   minimum: 0
-                  description: "Requests per minute for this key, multiplied by the group's rpmRatio. 0 = unlimited."
+                  description: "Requests per minute for this key, multiplied by the tenant's rpmRatio. 0 = unlimited."
                 tpm:
                   type: integer
                   minimum: 0
-                  description: "Tokens per minute for this key, multiplied by the group's tpmRatio. 0 = unlimited."
+                  description: "Tokens per minute for this key, multiplied by the tenant's tpmRatio. 0 = unlimited."
                 budget:
                   type: object
                   description: "Dollar budget per period. Requests that might go over it get 429 insufficient_quota."
@@ -335,15 +335,15 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: groups.valetkey.dev
+  name: tenants.valetkey.dev
 spec:
   group: valetkey.dev
   scope: Namespaced
   names:
-    kind: Group
-    plural: groups
-    singular: group
-    shortNames: [grp]
+    kind: Tenant
+    plural: tenants
+    singular: tenant
+    shortNames: [tn]
   versions:
     - name: v1alpha1
       served: true
@@ -354,9 +354,9 @@ spec:
         - name: Status
           type: string
           jsonPath: .spec.status
-        - name: Channels
+        - name: Providers
           type: string
-          jsonPath: .spec.channelRefs
+          jsonPath: .spec.providers
         - name: RPM
           type: string
           jsonPath: .spec.rpmRatio
@@ -379,13 +379,13 @@ spec:
           properties:
             spec:
               type: object
-              required: [channelRefs]
+              required: [providers]
               properties:
                 status:
                   type: string
                   enum: [Enabled, Disabled]
                   default: Enabled
-                channelRefs:
+                providers:
                   type: array
                   items:
                     type: string

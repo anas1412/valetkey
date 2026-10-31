@@ -35,7 +35,7 @@ type ModelList struct {
 }
 
 // ListModels calls the provider's GET /v1/models with its real key. No prompt is sent.
-func ListModels(ctx context.Context, ch *types.Channel, apiKey string) (ModelList, error) {
+func ListModels(ctx context.Context, ch *types.Provider, apiKey string) (ModelList, error) {
 	var res ModelList
 	url, err := JoinURL(ch.Spec.BaseURL, "/v1/models")
 	if err != nil {

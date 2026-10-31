@@ -21,10 +21,10 @@ import (
 )
 
 // Admin API against client-go's fake dynamic client: create/update write real objects.
-func TestChannelCreateAndUpdate(t *testing.T) {
+func TestProviderCreateAndUpdate(t *testing.T) {
 	scheme := runtime.NewScheme()
 	dyn := dynfake.NewSimpleDynamicClientWithCustomListKinds(scheme, map[schema.GroupVersionResource]string{
-		types.ChannelGVR: "ChannelList", types.GroupGVR: "GroupList", types.ProxyKeyGVR: "ProxyKeyList",
+		types.ProviderGVR: "ProviderList", types.TenantGVR: "TenantList", types.ProxyKeyGVR: "ProxyKeyList",
 		types.SecretGVR: "SecretList", types.NamespaceGVR: "NamespaceList",
 	})
 	kc := &kube.Client{Dynamic: dyn}
@@ -46,10 +46,10 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	}
 
 	spec := map[string]any{"type": "openai", "baseURL": "https://api.openai.com", "models": []string{"gpt-4o"}}
-	if code := call("POST", "/api/v1/channels", map[string]any{"name": "openai", "spec": spec, "apiKey": "sk-real"}); code != 201 {
+	if code := call("POST", "/api/v1/providers", map[string]any{"name": "openai", "spec": spec, "apiKey": "sk-real"}); code != 201 {
 		t.Fatalf("create: %d", code)
 	}
-	ch, err := dyn.Resource(types.ChannelGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
+	ch, err := dyn.Resource(types.ProviderGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,17 +61,17 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	}
 
 	spec["models"] = []string{"gpt-4o", "gpt-4o-mini"}
-	if code := call("PUT", "/api/v1/channels/openai", map[string]any{"spec": spec}); code != 200 {
+	if code := call("PUT", "/api/v1/providers/openai", map[string]any{"spec": spec}); code != 200 {
 		t.Fatalf("update: %d", code)
 	}
-	ch, _ = dyn.Resource(types.ChannelGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
+	ch, _ = dyn.Resource(types.ProviderGVR).Namespace("valetkey-system").Get(t.Context(), "openai", metav1.GetOptions{})
 	models, _, _ := unstructured.NestedStringSlice(ch.Object, "spec", "models")
 	ref, _, _ := unstructured.NestedString(ch.Object, "spec", "keySecretRef", "name")
 	if len(models) != 2 || ref != "openai-api-key" {
 		t.Fatalf("after update models=%v ref=%q (key reference must be kept)", models, ref)
 	}
 
-	if code := call("POST", "/api/v1/channels", map[string]any{"name": "Bad Name", "spec": spec, "apiKey": "x"}); code != 400 {
+	if code := call("POST", "/api/v1/providers", map[string]any{"name": "Bad Name", "spec": spec, "apiKey": "x"}); code != 400 {
 		t.Fatalf("invalid name accepted: %d", code)
 	}
 }
@@ -95,11 +95,11 @@ func TestGuardRejectsForeignRequests(t *testing.T) {
 		header bool
 		want   int
 	}{
-		"local with header":          {"http://localhost:8082/api/v1/channels", true, 200},
-		"ipv4 loopback":              {"http://127.0.0.1:8082/api/v1/channels", true, 200},
-		"ipv6 loopback":              {"http://[::1]:8082/api/v1/channels", true, 200},
-		"no header (cross-site)":     {"http://localhost:8082/api/v1/channels", false, 403},
-		"other host (DNS rebinding)": {"http://evil.example:8082/api/v1/channels", true, 403},
+		"local with header":          {"http://localhost:8082/api/v1/providers", true, 200},
+		"ipv4 loopback":              {"http://127.0.0.1:8082/api/v1/providers", true, 200},
+		"ipv6 loopback":              {"http://[::1]:8082/api/v1/providers", true, 200},
+		"no header (cross-site)":     {"http://localhost:8082/api/v1/providers", false, 403},
+		"other host (DNS rebinding)": {"http://evil.example:8082/api/v1/providers", true, 403},
 	} {
 		if got := try(c.url, c.header); got != c.want {
 			t.Errorf("%s: got %d, want %d", name, got, c.want)

@@ -21,10 +21,10 @@ spec:
           annotations:
             summary: "{{`{{ $labels.scope }} {{ $labels.name }}`}} has used {{`{{ $value | humanizePercentage }}`}} of its budget"
         - alert: ValetkeyBudgetReached
-          expr: sum by (group, scope) (increase(valetkey_budget_rejections_total[10m])) > 0
+          expr: sum by (tenant, scope) (increase(valetkey_budget_rejections_total[10m])) > 0
           labels: { severity: warning }
           annotations:
-            summary: "Requests of tenant {{`{{ $labels.group }}`}} are refused: a {{`{{ $labels.scope }}`}} budget is used up"
+            summary: "Requests of tenant {{`{{ $labels.tenant }}`}} are refused: a {{`{{ $labels.scope }}`}} budget is used up"
         - alert: ValetkeyHighErrorRate
           expr: |
             sum(rate(valetkey_requests_total{status_code=~"5.."}[5m])) / sum(rate(valetkey_requests_total[5m])) > 0.1
@@ -33,10 +33,10 @@ spec:
           annotations:
             summary: "{{`{{ $value | humanizePercentage }}`}} of requests through Valetkey fail with a 5xx"
         - alert: ValetkeyProviderFailing
-          expr: sum by (channel) (increase(valetkey_channel_errors_total[10m])) > {{ .Values.prometheusRule.providerErrors }}
+          expr: sum by (provider) (increase(valetkey_provider_errors_total[10m])) > {{ .Values.prometheusRule.providerErrors }}
           labels: { severity: warning }
           annotations:
-            summary: "Provider {{`{{ $labels.channel }}`}} failed {{`{{ $value }}`}} times in 10 minutes"
+            summary: "Provider {{`{{ $labels.provider }}`}} failed {{`{{ $value }}`}} times in 10 minutes"
         - alert: ValetkeyPricesStale
           expr: time() - max(valetkey_pricing_fetched_timestamp_seconds) > 86400
           for: 1h

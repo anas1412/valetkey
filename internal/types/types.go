@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	Group   = "valetkey.dev"
-	Version = "v1alpha1"
+	APIGroup = "valetkey.dev"
+	Version  = "v1alpha1"
 )
 
 var (
-	ChannelGVR   = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "channels"}
-	GroupGVR     = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "groups"}
-	ProxyKeyGVR  = schema.GroupVersionResource{Group: Group, Version: Version, Resource: "proxykeys"}
+	ProviderGVR  = schema.GroupVersionResource{Group: APIGroup, Version: Version, Resource: "providers"}
+	TenantGVR    = schema.GroupVersionResource{Group: APIGroup, Version: Version, Resource: "tenants"}
+	ProxyKeyGVR  = schema.GroupVersionResource{Group: APIGroup, Version: Version, Resource: "proxykeys"}
 	SecretGVR    = schema.GroupVersionResource{Version: "v1", Resource: "secrets"}
 	ConfigMapGVR = schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}
 	EventGVR     = schema.GroupVersionResource{Version: "v1", Resource: "events"}
@@ -51,7 +51,7 @@ type Status struct {
 	SecretName string      `json:"secretName,omitempty"`
 	// Rotation is the RotateAnnotation value the current key was issued for (ProxyKey).
 	Rotation string `json:"rotation,omitempty"`
-	// Spend is the current period's spend (ProxyKey and Group).
+	// Spend is the current period's spend (ProxyKey and Tenant).
 	Spend *Spend `json:"spend,omitempty"`
 	// ModelSpend is the spend per model with a budget in spec.modelBudgets (ProxyKey).
 	ModelSpend map[string]*Spend `json:"modelSpend,omitempty"`
@@ -84,8 +84,8 @@ type Budget struct {
 	Timezone string `json:"timezone,omitempty"` // IANA name; default UTC
 }
 
-// ChannelPricing says how a channel's requests are priced.
-type ChannelPricing struct {
+// ProviderPricing says how a provider's requests are priced.
+type ProviderPricing struct {
 	// Provider is the price catalogue provider (models.dev id, e.g. "deepseek").
 	// Empty: guessed from baseURL.
 	Provider string `json:"provider,omitempty"`
@@ -116,7 +116,7 @@ func (r SecretRef) KeyName() string {
 	return r.Key
 }
 
-type ChannelSpec struct {
+type ProviderSpec struct {
 	BaseURL       string            `json:"baseURL"`
 	Type          string            `json:"type"` // "openai" | "anthropic"
 	KeySecretRef  SecretRef         `json:"keySecretRef"`
@@ -126,42 +126,42 @@ type ChannelSpec struct {
 	ProxyURL      string            `json:"proxyURL,omitempty"`
 	SkipTLSVerify bool              `json:"skipTLSVerify,omitempty"`
 	ModelMapping  map[string]string `json:"modelMapping,omitempty"`
-	Pricing       *ChannelPricing   `json:"pricing,omitempty"`
+	Pricing       *ProviderPricing  `json:"pricing,omitempty"`
 }
 
-type Channel struct {
+type Provider struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	Spec              ChannelSpec `json:"spec"`
-	Status            Status      `json:"status,omitempty"`
+	Spec              ProviderSpec `json:"spec"`
+	Status            Status       `json:"status,omitempty"`
 }
 
-func (c *Channel) Enabled() bool { return c.Spec.Status == "" || c.Spec.Status == Enabled }
+func (c *Provider) Enabled() bool { return c.Spec.Status == "" || c.Spec.Status == Enabled }
 
 // EffectivePriority defaults to 10.
-func (c *Channel) EffectivePriority() int {
+func (c *Provider) EffectivePriority() int {
 	if c.Spec.Priority <= 0 {
 		return 10
 	}
 	return c.Spec.Priority
 }
 
-type GroupSpec struct {
-	Status      string   `json:"status,omitempty"`
-	ChannelRefs []string `json:"channelRefs"`
-	RPMRatio    float64  `json:"rpmRatio,omitempty"`
-	TPMRatio    float64  `json:"tpmRatio,omitempty"`
-	Budget      *Budget  `json:"budget,omitempty"`
+type TenantSpec struct {
+	Status    string   `json:"status,omitempty"`
+	Providers []string `json:"providers"`
+	RPMRatio  float64  `json:"rpmRatio,omitempty"`
+	TPMRatio  float64  `json:"tpmRatio,omitempty"`
+	Budget    *Budget  `json:"budget,omitempty"`
 }
 
-type TenantGroup struct {
+type Tenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	Spec              GroupSpec `json:"spec"`
-	Status            Status    `json:"status,omitempty"`
+	Spec              TenantSpec `json:"spec"`
+	Status            Status     `json:"status,omitempty"`
 }
 
-func (g *TenantGroup) Enabled() bool { return g.Spec.Status == "" || g.Spec.Status == Enabled }
+func (g *Tenant) Enabled() bool { return g.Spec.Status == "" || g.Spec.Status == Enabled }
 
 type ProxyKeySpec struct {
 	Status  string   `json:"status,omitempty"`

@@ -44,6 +44,11 @@ key_of() { # namespace name
 }
 spend_of() { kubectl get pkey -n billing "$1" -o jsonpath='{.status.spend.usd}'; }
 
+# The playground's fake providers fail 2% of requests on purpose; checks here need
+# every request to reach Valetkey's own logic.
+for p in fake-openai fake-anthropic fake-deepseek; do kubectl set env -n fake-llm "deploy/$p" FAIL_RATE=0 >/dev/null; done
+for p in fake-openai fake-anthropic fake-deepseek; do kubectl rollout status -n fake-llm "deploy/$p" --timeout=2m >/dev/null; done
+
 step "Keys are ready"
 kubectl wait -n billing pkey/invoice-api --for=jsonpath='{.status.ready}'=true --timeout=2m >/dev/null
 pass "invoice-api is ready"
@@ -146,18 +151,18 @@ metadata: { name: e2e-revoked-key, namespace: $NS }
 stringData: { apiKey: rejected }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata: { name: e2e-revoked, namespace: $NS }
 spec: { type: openai, baseURL: "http://fake-openai.fake-llm.svc", keySecretRef: { name: e2e-revoked-key } }
 YAML
-kubectl wait -n "$NS" channel/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyRejected --timeout=30s >/dev/null ||
-  fail "rejected key not detected: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
-pass "rejected key detected: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
+kubectl wait -n "$NS" provider/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyRejected --timeout=30s >/dev/null ||
+  fail "rejected key not detected: $(kubectl get provider -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
+pass "rejected key detected: $(kubectl get provider -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].message}')"
 kubectl patch secret -n "$NS" e2e-revoked-key --type merge -p '{"stringData":{"apiKey":"sk-fixed"}}' >/dev/null
-kubectl wait -n "$NS" channel/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyResolved --timeout=30s >/dev/null ||
-  fail "fixed key still marked: $(kubectl get channel -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].reason}')"
+kubectl wait -n "$NS" provider/e2e-revoked --for=jsonpath='{.status.conditions[0].reason}'=KeyResolved --timeout=30s >/dev/null ||
+  fail "fixed key still marked: $(kubectl get provider -n "$NS" e2e-revoked -o jsonpath='{.status.conditions[0].reason}')"
 pass "a new key clears it"
-kubectl delete channel -n "$NS" e2e-revoked >/dev/null
+kubectl delete provider -n "$NS" e2e-revoked >/dev/null
 kubectl delete secret -n "$NS" e2e-revoked-key >/dev/null
 
 step "Two replicas"

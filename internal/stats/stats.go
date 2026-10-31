@@ -11,8 +11,8 @@ type RequestEntry struct {
 	Time         int64  `json:"time"` // epoch ms
 	Namespace    string `json:"namespace"`
 	Key          string `json:"key"`
-	Group        string `json:"group"`
-	Channel      string `json:"channel"`
+	Tenant       string `json:"tenant"`
+	Provider     string `json:"provider"`
 	Model        string `json:"model"`
 	Status       int    `json:"status"`
 	InputTokens  int    `json:"inputTokens"`
@@ -152,14 +152,14 @@ func (s *Stats) KeyUsage(namespace, name string) KeyUsage {
 	return KeyUsage{}
 }
 
-// ChannelShare counts requests per channel over the kept request log.
-func (s *Stats) ChannelShare() map[string]int {
+// ProviderShare counts requests per provider over the kept request log.
+func (s *Stats) ProviderShare() map[string]int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	share := map[string]int{}
 	for _, r := range s.requests {
-		if r.Channel != "none" {
-			share[r.Channel]++
+		if r.Provider != "none" {
+			share[r.Provider]++
 		}
 	}
 	return share

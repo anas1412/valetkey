@@ -18,7 +18,7 @@ kubectl create secret generic openai-key -n valetkey-system \
 ```yaml
 # provider.yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: openai
   namespace: valetkey-system
@@ -31,17 +31,17 @@ spec:
 
 ## 3. Create the tenant
 
-A tenant is a `Group` in the operator namespace whose **name is the tenant's namespace**:
+A tenant is a `Tenant` in the operator namespace whose **name is the tenant's namespace**:
 
 ```yaml
 # tenant.yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata:
   name: billing                       # the tenant namespace
   namespace: valetkey-system
 spec:
-  channelRefs: [openai]
+  providers: [openai]
 ```
 
 ## 4. Create an API key
@@ -69,22 +69,22 @@ kubectl apply -f provider.yaml -f tenant.yaml -f key.yaml
 ## 5. Check that everything is ready
 
 ```bash
-kubectl get chan,grp -n valetkey-system
+kubectl get prov,tn -n valetkey-system
 kubectl get pkey -A
 ```
 
 ```
-NAME                                  TYPE     BASEURL                  STATUS    PRIORITY   READY
-channel.valetkey.dev/openai   openai   https://api.openai.com   Enabled   10         true
+NAME                           TYPE     BASEURL                  STATUS    PRIORITY   READY
+provider.valetkey.dev/openai   openai   https://api.openai.com   Enabled   10         true
 
-NAME                                 STATUS    CHANNELS     RPM   TPM   READY
-group.valetkey.dev/billing   Enabled   ["openai"]   1     1     true
+NAME                          STATUS    PROVIDERS    RPM   TPM   SPENT   BUDGET   READY
+tenant.valetkey.dev/billing   Enabled   ["openai"]   1     1                      true
 
 NAMESPACE   NAME          STATUS    READY   SECRET                 MESSAGE
 billing     invoice-api   Enabled   true    invoice-api-valetkey   Active
 ```
 
-If something isn't ready, the `MESSAGE` column (or `kubectl describe`) says why, for example `group "billing" not found` or `key "apiKey" missing in secret "openai-key"`.
+If something isn't ready, the `MESSAGE` column (or `kubectl describe`) says why, for example `tenant "billing" not found` or `key "apiKey" missing in secret "openai-key"`.
 
 ## 6. Read the virtual key
 
@@ -141,7 +141,7 @@ kubectl delete pkey invoice-api -n billing    # its Secret is deleted with it
 ### Turn off a whole tenant
 
 ```bash
-kubectl patch grp billing -n valetkey-system --type merge -p '{"spec":{"status":"Disabled"}}'
+kubectl patch tn billing -n valetkey-system --type merge -p '{"spec":{"status":"Disabled"}}'
 ```
 
 ### Replace a provider's API key

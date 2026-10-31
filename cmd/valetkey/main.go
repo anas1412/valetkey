@@ -76,7 +76,7 @@ func run() error {
 	elector := &leader.Elector{Client: kc.Dynamic, Namespace: cfg.OperatorNamespace, Name: cfg.LeaseName,
 		Identity: pod, Duration: 15 * time.Second, Renew: 2 * time.Second}
 	ctrl.IsLeader = elector.Leading
-	ctrl.CheckKey = func(ctx context.Context, ch *types.Channel, key string) string {
+	ctrl.CheckKey = func(ctx context.Context, ch *types.Provider, key string) string {
 		_, err := relay.ListModels(ctx, ch, key)
 		return relay.RejectedReason(err)
 	}
@@ -113,7 +113,7 @@ func run() error {
 		budgets.Run(saveCtx, spendSaveInterval, func(ctx context.Context, s budget.Scope, sp types.Spend) error {
 			gvr, ns := types.ProxyKeyGVR, s.Namespace
 			if s.Kind == "tenant" {
-				gvr, ns = types.GroupGVR, cfg.OperatorNamespace
+				gvr, ns = types.TenantGVR, cfg.OperatorNamespace
 			}
 			err := kc.PatchSpend(ctx, gvr, ns, s.Name, s.Model, sp)
 			if apierrors.IsNotFound(err) {
@@ -163,8 +163,8 @@ func reportBudgetAlerts(ctx context.Context, b *budget.Tracker, kc *kube.Client,
 
 			ref := kube.ObjectRef{Kind: "ProxyKey", Namespace: a.Scope.Namespace, Name: a.Scope.Name}
 			if a.Scope.Kind == "tenant" {
-				ref = kube.ObjectRef{Kind: "Group", Namespace: operatorNS, Name: a.Scope.Name}
-				if g, ok := reg.Group(a.Scope.Name); ok {
+				ref = kube.ObjectRef{Kind: "Tenant", Namespace: operatorNS, Name: a.Scope.Name}
+				if g, ok := reg.Tenant(a.Scope.Name); ok {
 					ref.UID = string(g.UID)
 				}
 			} else if pk, ok := ctrl.ProxyKey(a.Scope.Namespace, a.Scope.Name); ok {

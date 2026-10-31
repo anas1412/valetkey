@@ -16,7 +16,7 @@ import (
 const defaultMaxOutput = 131_072
 
 // anthropicDefaultMaxTokens is the cap sent when an OpenAI client without max_tokens
-// is translated for an Anthropic channel (Anthropic requires one).
+// is translated for an Anthropic provider (Anthropic requires one).
 const anthropicDefaultMaxTokens = 4096
 
 // costing prices one request and holds its budget reservation.
@@ -30,28 +30,28 @@ type costing struct {
 	inputBound, outputLimit int // outputLimit 0 = take the model's max output
 }
 
-// upstreamModel is the model name the channel is billed for.
-func upstreamModel(e registry.ChannelEntry, model string) string {
-	if m := e.Channel.Spec.ModelMapping[model]; m != "" {
+// upstreamModel is the model name the provider is billed for.
+func upstreamModel(e registry.ProviderEntry, model string) string {
+	if m := e.Provider.Spec.ModelMapping[model]; m != "" {
 		return m
 	}
 	return model
 }
 
 // prepareCost reserves the request's worst-case cost on the key's and tenant's
-// budgets. With a budget, channels without a known price are dropped. It returns
-// the channels left to try, or a client error.
+// budgets. With a budget, providers without a known price are dropped. It returns
+// the providers left to try, or a client error.
 func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any, bodySize int, model string,
-	candidates []registry.ChannelEntry, start time.Time) (*costing, []registry.ChannelEntry, *relayError) {
+	candidates []registry.ProviderEntry, start time.Time) (*costing, []registry.ProviderEntry, *relayError) {
 	if rl.Prices == nil || rl.Budgets == nil {
 		return nil, candidates, nil
 	}
 	items := []budget.Item{{Scope: budget.KeyScope(route.Namespace, route.ProxyKeyName), Limit: route.Budget}}
 	var tenantLimit *budget.Limit
-	if g, ok := rl.Registry.Group(route.Group); ok {
+	if g, ok := rl.Registry.Tenant(route.Tenant); ok {
 		tenantLimit = budget.ParseCached(g.Spec.Budget)
 	}
-	items = append(items, budget.Item{Scope: budget.TenantScope(route.Group), Limit: tenantLimit})
+	items = append(items, budget.Item{Scope: budget.TenantScope(route.Tenant), Limit: tenantLimit})
 	modelLimit := route.ModelBudgets[model]
 	if modelLimit != nil {
 		items = append(items, budget.Item{Scope: budget.KeyModelScope(route.Namespace, route.ProxyKeyName, model), Limit: modelLimit})
@@ -78,7 +78,7 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 	var worst pricing.USD
 	priced := candidates[:0:0]
 	for _, e := range candidates {
-		p, ok := rl.Prices.Resolve(e.Channel.Spec, upstreamModel(e, model))
+		p, ok := rl.Prices.Resolve(e.Provider.Spec, upstreamModel(e, model))
 		if !ok {
 			if !budgeted {
 				priced = append(priced, e)
@@ -90,13 +90,13 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 	}
 	if len(priced) == 0 {
 		return nil, nil, &relayError{status: http.StatusForbidden, kind: "model_not_priced",
-			message: fmt.Sprintf("this key has a budget, but no price is known for model %q on its providers; set spec.pricing on the channel", model)}
+			message: fmt.Sprintf("this key has a budget, but no price is known for model %q on its providers; set spec.pricing on the provider", model)}
 	}
 	res, err := rl.Budgets.Reserve(items, worst)
 	if err != nil {
 		var ex *budget.ExceededError
 		if errors.As(err, &ex) {
-			rl.Metrics.BudgetRejected.WithLabelValues(route.Group, ex.Scope.Kind).Inc()
+			rl.Metrics.BudgetRejected.WithLabelValues(route.Tenant, ex.Scope.Kind).Inc()
 		}
 		return nil, nil, &relayError{status: http.StatusTooManyRequests, kind: "insufficient_quota", message: err.Error()}
 	}
@@ -104,14 +104,14 @@ func (rl *Relay) prepareCost(route registry.Route, api API, body map[string]any,
 	return c, priced, nil
 }
 
-// outputBound is the most output tokens the request can produce on channel e.
-func (c *costing) outputBound(e registry.ChannelEntry, p pricing.Price) int {
+// outputBound is the most output tokens the request can produce on provider e.
+func (c *costing) outputBound(e registry.ProviderEntry, p pricing.Price) int {
 	switch {
 	case c.api == Embeddings:
 		return 0
 	case c.outputLimit > 0:
 		return c.outputLimit
-	case c.api == OpenAI && e.Channel.Spec.Type == "anthropic":
+	case c.api == OpenAI && e.Provider.Spec.Type == "anthropic":
 		return anthropicDefaultMaxTokens // the translation sends this cap
 	case p.MaxOutput > 0:
 		return p.MaxOutput
@@ -122,11 +122,11 @@ func (c *costing) outputBound(e registry.ChannelEntry, p pricing.Price) int {
 
 // settle charges the request's real cost to the budgets and returns it, with
 // "estimated", "unpriced" or "no usage" when it isn't exact.
-func (c *costing) settle(e registry.ChannelEntry, model string, status int, u *Usage) (pricing.USD, string) {
+func (c *costing) settle(e registry.ProviderEntry, model string, status int, u *Usage) (pricing.USD, string) {
 	if c == nil {
 		return 0, ""
 	}
-	p, ok := c.rl.Prices.Resolve(e.Channel.Spec, upstreamModel(e, model))
+	p, ok := c.rl.Prices.Resolve(e.Provider.Spec, upstreamModel(e, model))
 	cal := c.rl.Prices.Catalog().Calendars
 	var cost pricing.USD
 	note := ""
@@ -167,12 +167,12 @@ func (c *costing) report() {
 		m.BudgetLimit.WithLabelValues("key", keyName).Set(c.route.Budget.Amount.Float())
 	}
 	var tl *budget.Limit
-	if g, ok := c.rl.Registry.Group(c.route.Group); ok {
+	if g, ok := c.rl.Registry.Tenant(c.route.Tenant); ok {
 		tl = budget.ParseCached(g.Spec.Budget)
 	}
-	m.BudgetSpent.WithLabelValues("tenant", c.route.Group).Set(b.Usage(budget.TenantScope(c.route.Group), tl).Spent.Float())
+	m.BudgetSpent.WithLabelValues("tenant", c.route.Tenant).Set(b.Usage(budget.TenantScope(c.route.Tenant), tl).Spent.Float())
 	if tl != nil {
-		m.BudgetLimit.WithLabelValues("tenant", c.route.Group).Set(tl.Amount.Float())
+		m.BudgetLimit.WithLabelValues("tenant", c.route.Tenant).Set(tl.Amount.Float())
 	}
 }
 

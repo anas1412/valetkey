@@ -80,7 +80,7 @@ func (a *API) createKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pk := types.ProxyKey{
-		TypeMeta:   metav1.TypeMeta{APIVersion: types.Group + "/" + types.Version, Kind: "ProxyKey"},
+		TypeMeta:   metav1.TypeMeta{APIVersion: types.APIGroup + "/" + types.Version, Kind: "ProxyKey"},
 		ObjectMeta: metav1.ObjectMeta{Name: in.Name, Namespace: in.Namespace},
 		Spec:       in.Spec,
 	}

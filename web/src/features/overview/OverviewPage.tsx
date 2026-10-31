@@ -65,7 +65,7 @@ export function OverviewPage({ onNavigate }: { onNavigate: (r: Route) => void })
         </div>
       )}
 
-      {(counts.channels === 0 || counts.groups === 0 || counts.keys === 0) && (
+      {(counts.providers === 0 || counts.tenants === 0 || counts.keys === 0) && (
         <GettingStarted counts={counts} onNavigate={onNavigate} />
       )}
 
@@ -83,10 +83,10 @@ export function OverviewPage({ onNavigate }: { onNavigate: (r: Route) => void })
 
       <div className="grid gap-6 lg:grid-cols-3">
         <UsageChart series={series} stepMinutes={stepMinutes} range={data.range} className="lg:col-span-2" />
-        <TrafficShare share={data.channelShare} subtitle={fromProm ? period : 'Last 500 requests'} />
+        <TrafficShare share={data.providerShare} subtitle={fromProm ? period : 'Last 500 requests'} />
       </div>
 
-      <ProviderHealth channels={data.channels} onNavigate={onNavigate} />
+      <ProviderHealth providers={data.providers} onNavigate={onNavigate} />
     </>
   )
 }

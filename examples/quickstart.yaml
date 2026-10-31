@@ -20,7 +20,7 @@ stringData:
 ---
 # 2. Providers
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: openai
   namespace: valetkey-system
@@ -32,7 +32,7 @@ spec:
   priority: 10
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: anthropic
   namespace: valetkey-system
@@ -45,12 +45,12 @@ spec:
 ---
 # 3. Tenant: its name is the tenant namespace
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata:
   name: billing
   namespace: valetkey-system
 spec:
-  channelRefs: [openai, anthropic]
+  providers: [openai, anthropic]
   rpmRatio: 1.0
   tpmRatio: 1.0
 ---

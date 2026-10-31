@@ -165,19 +165,19 @@ func TestAudioTokens(t *testing.T) {
 func TestOverrideWins(t *testing.T) {
 	s := &Store{}
 	s.set(fixtureCatalog(t, fixtureDeepSeek))
-	spec := types.ChannelSpec{BaseURL: "https://api.deepseek.com", Pricing: &types.ChannelPricing{
+	spec := types.ProviderSpec{BaseURL: "https://api.deepseek.com", Pricing: &types.ProviderPricing{
 		Models: map[string]types.ModelPrice{"deepseek-v4-pro": {Input: "0.5", Output: "1"}}}}
 	p, ok := s.Resolve(spec, "deepseek-v4-pro")
-	if !ok || p.Source != "channel override" || perM(p.Rates.Input) != "$0.50" || len(p.Windows) != 0 {
+	if !ok || p.Source != "provider override" || perM(p.Rates.Input) != "$0.50" || len(p.Windows) != 0 {
 		t.Fatalf("override: %+v", p)
 	}
-	if _, ok := s.Resolve(types.ChannelSpec{BaseURL: "http://vllm.local:8000"}, "llama"); ok {
+	if _, ok := s.Resolve(types.ProviderSpec{BaseURL: "http://vllm.local:8000"}, "llama"); ok {
 		t.Fatal("unknown provider should have no price")
 	}
-	if p, ok := s.Resolve(types.ChannelSpec{BaseURL: "http://gw.internal", Pricing: &types.ChannelPricing{Provider: "anthropic"}}, "claude-sonnet-4.5"); !ok || perM(p.Rates.Input) != "$3.00" {
+	if p, ok := s.Resolve(types.ProviderSpec{BaseURL: "http://gw.internal", Pricing: &types.ProviderPricing{Provider: "anthropic"}}, "claude-sonnet-4.5"); !ok || perM(p.Rates.Input) != "$3.00" {
 		t.Fatalf("explicit provider with dotted id: %v %+v", ok, p)
 	}
-	if err := ValidateOverrides(&types.ChannelPricing{Models: map[string]types.ModelPrice{"x": {Input: "abc", Output: "1"}}}); err == nil {
+	if err := ValidateOverrides(&types.ProviderPricing{Models: map[string]types.ModelPrice{"x": {Input: "abc", Output: "1"}}}); err == nil {
 		t.Fatal("bad override accepted")
 	}
 }

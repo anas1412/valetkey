@@ -14,7 +14,7 @@ import (
 // Route maps a hashed virtual key to its tenant and limits.
 type Route struct {
 	KeyHash      string
-	Group        string
+	Tenant       string
 	Namespace    string
 	ProxyKeyName string
 	Models       []string // nil = any
@@ -26,39 +26,39 @@ type Route struct {
 	ExpiresAt    time.Time // zero = never
 }
 
-// ChannelEntry is a Channel plus its resolved upstream key ("" = unresolved).
-type ChannelEntry struct {
-	Channel     *types.Channel
+// ProviderEntry is a Provider plus its resolved upstream key ("" = unresolved).
+type ProviderEntry struct {
+	Provider    *types.Provider
 	UpstreamKey string
 	// Rejected is why the provider refused the key (HTTP 401/403), "" if it hasn't.
 	Rejected string
 }
 
-func (e ChannelEntry) Name() string { return e.Channel.Name }
+func (e ProviderEntry) Name() string { return e.Provider.Name }
 
 // Usable means enabled, with a resolved key the provider hasn't rejected.
-func (e ChannelEntry) Usable() bool {
-	return e.Channel.Enabled() && e.UpstreamKey != "" && e.Rejected == ""
+func (e ProviderEntry) Usable() bool {
+	return e.Provider.Enabled() && e.UpstreamKey != "" && e.Rejected == ""
 }
 
-// SameKey reports whether the channel still sends the same key to the same provider,
+// SameKey reports whether the provider still sends the same key to the same provider,
 // so an earlier verdict on the key still holds.
-func (e ChannelEntry) SameKey(ch *types.Channel, upstreamKey string) bool {
-	return e.UpstreamKey == upstreamKey && e.Channel.Spec.BaseURL == ch.Spec.BaseURL && e.Channel.Spec.Type == ch.Spec.Type
+func (e ProviderEntry) SameKey(ch *types.Provider, upstreamKey string) bool {
+	return e.UpstreamKey == upstreamKey && e.Provider.Spec.BaseURL == ch.Spec.BaseURL && e.Provider.Spec.Type == ch.Spec.Type
 }
 
 type Registry struct {
-	mu       sync.RWMutex
-	routes   map[string]Route  // keyHash → route
-	byUID    map[string]string // ProxyKey uid → keyHash
-	channels map[string]ChannelEntry
-	groups   map[string]*types.TenantGroup
+	mu        sync.RWMutex
+	routes    map[string]Route  // keyHash → route
+	byUID     map[string]string // ProxyKey uid → keyHash
+	providers map[string]ProviderEntry
+	tenants   map[string]*types.Tenant
 }
 
 func New() *Registry {
 	return &Registry{
 		routes: map[string]Route{}, byUID: map[string]string{},
-		channels: map[string]ChannelEntry{}, groups: map[string]*types.TenantGroup{},
+		providers: map[string]ProviderEntry{}, tenants: map[string]*types.Tenant{},
 	}
 }
 
@@ -99,93 +99,93 @@ func (r *Registry) Routes() []Route {
 	return out
 }
 
-func (r *Registry) UpsertChannel(ch *types.Channel, upstreamKey string) {
+func (r *Registry) UpsertProvider(ch *types.Provider, upstreamKey string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	e := ChannelEntry{Channel: ch, UpstreamKey: upstreamKey}
-	if old, ok := r.channels[ch.Name]; ok && old.SameKey(ch, upstreamKey) {
+	e := ProviderEntry{Provider: ch, UpstreamKey: upstreamKey}
+	if old, ok := r.providers[ch.Name]; ok && old.SameKey(ch, upstreamKey) {
 		e.Rejected = old.Rejected
 	}
-	r.channels[ch.Name] = e
+	r.providers[ch.Name] = e
 }
 
-// SetRejected records (msg != "") or clears a provider's refusal of the channel's key.
+// SetRejected records (msg != "") or clears a provider's refusal of the provider's key.
 // It reports whether anything changed.
 func (r *Registry) SetRejected(name, msg string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	e, ok := r.channels[name]
+	e, ok := r.providers[name]
 	if !ok || e.Rejected == msg {
 		return false
 	}
 	e.Rejected = msg
-	r.channels[name] = e
+	r.providers[name] = e
 	return true
 }
 
-func (r *Registry) EvictChannel(name string) {
+func (r *Registry) EvictProvider(name string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.channels, name)
+	delete(r.providers, name)
 }
 
-func (r *Registry) Channel(name string) (ChannelEntry, bool) {
+func (r *Registry) Provider(name string) (ProviderEntry, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	e, ok := r.channels[name]
+	e, ok := r.providers[name]
 	return e, ok
 }
 
-func (r *Registry) Channels() []ChannelEntry {
+func (r *Registry) Providers() []ProviderEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]ChannelEntry, 0, len(r.channels))
-	for _, v := range r.channels {
+	out := make([]ProviderEntry, 0, len(r.providers))
+	for _, v := range r.providers {
 		out = append(out, v)
 	}
 	return out
 }
 
-func (r *Registry) UpsertGroup(g *types.TenantGroup) {
+func (r *Registry) UpsertTenant(g *types.Tenant) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.groups[g.Name] = g
+	r.tenants[g.Name] = g
 }
 
-func (r *Registry) EvictGroup(name string) {
+func (r *Registry) EvictTenant(name string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.groups, name)
+	delete(r.tenants, name)
 }
 
-func (r *Registry) Group(name string) (*types.TenantGroup, bool) {
+func (r *Registry) Tenant(name string) (*types.Tenant, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	g, ok := r.groups[name]
+	g, ok := r.tenants[name]
 	return g, ok
 }
 
-func (r *Registry) Groups() []*types.TenantGroup {
+func (r *Registry) Tenants() []*types.Tenant {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*types.TenantGroup, 0, len(r.groups))
-	for _, v := range r.groups {
+	out := make([]*types.Tenant, 0, len(r.tenants))
+	for _, v := range r.tenants {
 		out = append(out, v)
 	}
 	return out
 }
 
-// GroupChannels returns the group's usable channels, in channelRefs order.
-func (r *Registry) GroupChannels(group string) []ChannelEntry {
+// TenantProviders returns the tenant's usable providers, in providers order.
+func (r *Registry) TenantProviders(tenant string) []ProviderEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	g, ok := r.groups[group]
+	g, ok := r.tenants[tenant]
 	if !ok {
 		return nil
 	}
-	var out []ChannelEntry
-	for _, name := range g.Spec.ChannelRefs {
-		if e, ok := r.channels[name]; ok && e.Usable() {
+	var out []ProviderEntry
+	for _, name := range g.Spec.Providers {
+		if e, ok := r.providers[name]; ok && e.Usable() {
 			out = append(out, e)
 		}
 	}
@@ -195,5 +195,5 @@ func (r *Registry) GroupChannels(group string) []ChannelEntry {
 func (r *Registry) Stats() map[string]int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return map[string]int{"routes": len(r.routes), "channels": len(r.channels), "groups": len(r.groups)}
+	return map[string]int{"routes": len(r.routes), "providers": len(r.providers), "tenants": len(r.tenants)}
 }

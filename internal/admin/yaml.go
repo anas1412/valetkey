@@ -14,10 +14,10 @@ import (
 	"github.com/anas1412/valetkey/internal/types"
 )
 
-// channelYAML answers with the Channel. Its key Secret is never shown: the value
+// providerYAML answers with the Provider. Its key Secret is never shown: the value
 // must stay out of the dashboard, so a comment says where it goes.
-func (a *API) channelYAML(w http.ResponseWriter, r *http.Request) {
-	obj, err := a.Kube.Get(r.Context(), types.ChannelGVR, a.Config.OperatorNamespace, r.PathValue("name"))
+func (a *API) providerYAML(w http.ResponseWriter, r *http.Request) {
+	obj, err := a.Kube.Get(r.Context(), types.ProviderGVR, a.Config.OperatorNamespace, r.PathValue("name"))
 	if err != nil {
 		writeKubeError(w, err)
 		return
@@ -31,11 +31,11 @@ func (a *API) keyYAML(w http.ResponseWriter, r *http.Request) {
 	a.writeYAML(w, r, types.ProxyKeyGVR, r.PathValue("ns"), r.PathValue("name"))
 }
 
-// groupYAML answers with the tenant's whole file, as laid out in the GitOps guide:
-// its Namespace, its Group and every ProxyKey in that namespace.
-func (a *API) groupYAML(w http.ResponseWriter, r *http.Request) {
+// tenantYAML answers with the tenant's whole file, as laid out in the GitOps guide:
+// its Namespace, its Tenant and every ProxyKey in that namespace.
+func (a *API) tenantYAML(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	g, err := a.Kube.Get(r.Context(), types.GroupGVR, a.Config.OperatorNamespace, name)
+	g, err := a.Kube.Get(r.Context(), types.TenantGVR, a.Config.OperatorNamespace, name)
 	if err != nil {
 		writeKubeError(w, err)
 		return

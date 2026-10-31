@@ -5,7 +5,7 @@ The minimal LLM proxy for Kubernetes. Go operator in `cmd/` and `internal/`, das
 ## Product rules
 
 - **No tenant self-service.** Tenants are normal users with no cluster or kubectl access. Only the admin creates, rotates and deletes keys (CRDs or the dashboard) and hands each key out. Don't suggest, build or document tenant RBAC, tenant portals or tenant-created keys.
-- **CRD-first.** Providers (`Channel`), tenants (`Group`) and keys (`ProxyKey`) are configured as CRDs for GitOps; the dashboard is optional. There is no CLI of our own: kubectl and Git make changes, the dashboard is for looking around.
+- **CRD-first.** The kinds `Provider`, `Tenant` and `ProxyKey` are configured as CRDs for GitOps; the dashboard is optional. There is no CLI of our own: kubectl and Git make changes, the dashboard is for looking around.
 - **No admin login.** The dashboard and admin API listen on 127.0.0.1:8082 in the pod and are reached only with `kubectl port-forward`. Kubernetes RBAC is the access control.
 - **Minimal.** One small distroless image, no database, no Redis. Never quote exact image size or memory numbers in docs or descriptions; they drift. Prompts and responses are never stored. Usage history comes from the user's own Prometheus.
 - **Docs and UI text:** no em dashes, no emojis. Say "tenant", not "team".

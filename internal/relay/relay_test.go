@@ -79,19 +79,19 @@ func newFixture(t *testing.T) *fixture {
 
 	reg := registry.New()
 	add := func(name, typ, url string, prio int, models ...string) {
-		reg.UpsertChannel(&types.Channel{ObjectMeta: metav1.ObjectMeta{Name: name},
-			Spec: types.ChannelSpec{Type: typ, BaseURL: url, Priority: prio, Models: models, KeySecretRef: types.SecretRef{Name: "s"}}}, "real-"+name+"-key")
+		reg.UpsertProvider(&types.Provider{ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec: types.ProviderSpec{Type: typ, BaseURL: url, Priority: prio, Models: models, KeySecretRef: types.SecretRef{Name: "s"}}}, "real-"+name+"-key")
 	}
 	add("ok", "openai", ok.URL, 1, "gpt-4o", "gpt-4o-mini")
 	add("broken", "openai", broken.URL, 1_000_000, "gpt-4o", "only-broken")
 	add("claude", "anthropic", claude.URL, 1, "claude-x")
-	reg.UpsertGroup(&types.TenantGroup{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.GroupSpec{ChannelRefs: []string{"ok", "broken", "claude"}}})
+	reg.UpsertTenant(&types.Tenant{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.TenantSpec{Providers: []string{"ok", "broken", "claude"}}})
 
 	rl := &Relay{Registry: reg, Limiter: NewRateLimiter(), Metrics: metrics.New(), Stats: f.stats, Transports: NewTransports()}
 	mux := http.NewServeMux()
 	withRoute := func(h http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			route := registry.Route{Group: "team", Namespace: "team", ProxyKeyName: "app"}
+			route := registry.Route{Tenant: "team", Namespace: "team", ProxyKeyName: "app"}
 			switch r.Header.Get("X-Test-Route") {
 			case "mini-only":
 				route.Models = []string{"gpt-4o-mini"}
@@ -151,7 +151,7 @@ func TestRelay(t *testing.T) {
 			up.headers.Get("Cookie") != "" || up.headers.Get("Accept-Encoding") != "" || up.headers.Get("X-Forwarded-For") != "" {
 			t.Fatalf("bad upstream request %s %v", up.path, up.headers)
 		}
-		if r := f.stats.Requests()[0]; r.Channel != "ok" || r.InputTokens != 10 || r.OutputTokens != 4 || r.Status != 200 {
+		if r := f.stats.Requests()[0]; r.Provider != "ok" || r.InputTokens != 10 || r.OutputTokens != 4 || r.Status != 200 {
 			t.Fatalf("bad stats %+v", r)
 		}
 	})
@@ -168,21 +168,21 @@ func TestRelay(t *testing.T) {
 		}
 	})
 
-	t.Run("a 500 from the preferred channel is retried on the next one", func(t *testing.T) {
+	t.Run("a 500 from the preferred provider is retried on the next one", func(t *testing.T) {
 		resp, _ := f.post(t, "/v1/chat/completions", map[string]any{"model": "gpt-4o", "messages": []any{}}, nil)
-		if resp.StatusCode != 200 || f.stats.Requests()[0].Channel != "ok" {
-			t.Fatalf("status %d via %s", resp.StatusCode, f.stats.Requests()[0].Channel)
+		if resp.StatusCode != 200 || f.stats.Requests()[0].Provider != "ok" {
+			t.Fatalf("status %d via %s", resp.StatusCode, f.stats.Requests()[0].Provider)
 		}
 	})
 
-	t.Run("when every channel fails the last upstream error is returned", func(t *testing.T) {
+	t.Run("when every provider fails the last upstream error is returned", func(t *testing.T) {
 		resp, body := f.post(t, "/v1/chat/completions", map[string]any{"model": "only-broken", "messages": []any{}}, nil)
 		if resp.StatusCode != 500 || body["error"].(map[string]any)["message"] != "boom" {
 			t.Fatalf("status %d body %v", resp.StatusCode, body)
 		}
 	})
 
-	t.Run("OpenAI client on an Anthropic channel gets a translated response", func(t *testing.T) {
+	t.Run("OpenAI client on an Anthropic provider gets a translated response", func(t *testing.T) {
 		resp, body := f.post(t, "/v1/chat/completions", map[string]any{"model": "claude-x",
 			"messages": []any{map[string]any{"role": "system", "content": "s"}, map[string]any{"role": "user", "content": "hi"}}}, nil)
 		if resp.StatusCode != 200 || body["object"] != "chat.completion" ||
@@ -203,7 +203,7 @@ func TestRelay(t *testing.T) {
 		}
 	})
 
-	t.Run("embeddings and responses go to the same path upstream, never to Anthropic channels", func(t *testing.T) {
+	t.Run("embeddings and responses go to the same path upstream, never to Anthropic providers", func(t *testing.T) {
 		for _, path := range []string{"/v1/embeddings", "/v1/responses"} {
 			resp, _ := f.post(t, path, map[string]any{"model": "gpt-4o-mini", "input": "hi"}, nil)
 			if resp.StatusCode != 200 || f.last().path != path || f.last().headers.Get("Authorization") != "Bearer real-ok-key" {
@@ -211,7 +211,7 @@ func TestRelay(t *testing.T) {
 			}
 		}
 		resp, body := f.post(t, "/v1/embeddings", map[string]any{"model": "claude-x", "input": "hi"}, nil)
-		if resp.StatusCode != http.StatusServiceUnavailable || body["error"].(map[string]any)["type"] != "no_channel_available" {
+		if resp.StatusCode != http.StatusServiceUnavailable || body["error"].(map[string]any)["type"] != "no_provider_available" {
 			t.Fatalf("embeddings on an anthropic-only model: %d %v", resp.StatusCode, body)
 		}
 	})
@@ -230,14 +230,14 @@ func TestRelay(t *testing.T) {
 		if f.last().body["max_output_tokens"] != 5.0 {
 			t.Fatalf("the request's own cap must win: %v", f.last().body)
 		}
-		if got := maxTokensField(OpenAI, types.ChannelSpec{BaseURL: "https://api.openai.com"}); got != "max_completion_tokens" {
+		if got := maxTokensField(OpenAI, types.ProviderSpec{BaseURL: "https://api.openai.com"}); got != "max_completion_tokens" {
 			t.Fatalf("official OpenAI field %q", got)
 		}
 	})
 
 	t.Run("client errors are answered immediately with JSON", func(t *testing.T) {
 		resp, body := f.post(t, "/v1/chat/completions", map[string]any{"model": "nobody-serves-this", "messages": []any{}}, nil)
-		if resp.StatusCode != 503 || body["error"].(map[string]any)["type"] != "no_channel_available" {
+		if resp.StatusCode != 503 || body["error"].(map[string]any)["type"] != "no_provider_available" {
 			t.Fatalf("status %d body %v", resp.StatusCode, body)
 		}
 		bad, _ := http.Post(f.proxy.URL+"/v1/chat/completions", "application/json", strings.NewReader("{nope"))
@@ -272,8 +272,8 @@ func TestRelay(t *testing.T) {
 func TestTokenAuth(t *testing.T) {
 	reg := registry.New()
 	allow, _ := keys.ParseAllowList([]string{"10.0.0.0/8"})
-	reg.UpsertRoute("uid", registry.Route{KeyHash: keys.Hash("sk-proxy-good"), Group: "team", AllowList: allow})
-	reg.UpsertRoute("old", registry.Route{KeyHash: keys.Hash("sk-proxy-old"), Group: "team", ExpiresAt: time.Now().Add(-time.Second)})
+	reg.UpsertRoute("uid", registry.Route{KeyHash: keys.Hash("sk-proxy-good"), Tenant: "team", AllowList: allow})
+	reg.UpsertRoute("old", registry.Route{KeyHash: keys.Hash("sk-proxy-old"), Tenant: "team", ExpiresAt: time.Now().Add(-time.Second)})
 	h := auth.TokenAuth(reg, "", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
 
 	try := func(header, value, remote string) int {

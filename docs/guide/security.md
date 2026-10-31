@@ -6,7 +6,7 @@ Valetkey doesn't have its own users or passwords. Everything is decided by Kuber
 
 | To… | You need |
 |---|---|
-| Add or change providers and tenants | write access to `channels` / `groups` in the Valetkey namespace |
+| Add or change providers and tenants | write access to `providers` / `tenants` in the Valetkey namespace |
 | Issue, change or revoke keys | write access to `proxykeys` in the tenant's namespace |
 | Read a tenant's key | read access to Secrets in the tenant's namespace |
 | Use the dashboard or admin API | `pods/portforward` on the Valetkey pod |

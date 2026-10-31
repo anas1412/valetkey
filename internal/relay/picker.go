@@ -8,15 +8,15 @@ import (
 	"github.com/anas1412/valetkey/internal/registry"
 )
 
-// Candidates returns the group's channels that can serve model for this client API,
+// Candidates returns the tenant's providers that can serve model for this client API,
 // in attempt order: a priority-weighted random primary, then the rest by priority.
-// A channel with priority 20 gets twice the traffic of one with 10.
-// Anthropic-format clients can only be served by anthropic channels; embeddings and
+// A provider with priority 20 gets twice the traffic of one with 10.
+// Anthropic-format clients can only be served by anthropic providers; embeddings and
 // the Responses API only by OpenAI-compatible ones.
-func Candidates(reg *registry.Registry, group, model string, api API) []registry.ChannelEntry {
-	var eligible []registry.ChannelEntry
-	for _, e := range reg.GroupChannels(group) {
-		if !canServe(api, e.Channel.Spec.Type) {
+func Candidates(reg *registry.Registry, tenant, model string, api API) []registry.ProviderEntry {
+	var eligible []registry.ProviderEntry
+	for _, e := range reg.TenantProviders(tenant) {
+		if !canServe(api, e.Provider.Spec.Type) {
 			continue
 		}
 		if ServesModel(e, model) {
@@ -29,26 +29,26 @@ func Candidates(reg *registry.Registry, group, model string, api API) []registry
 
 	total := 0
 	for _, e := range eligible {
-		total += e.Channel.EffectivePriority()
+		total += e.Provider.EffectivePriority()
 	}
 	r := rand.IntN(total)
 	primary := len(eligible) - 1
 	for i, e := range eligible {
-		if r -= e.Channel.EffectivePriority(); r < 0 {
+		if r -= e.Provider.EffectivePriority(); r < 0 {
 			primary = i
 			break
 		}
 	}
 	rest := slices.Delete(slices.Clone(eligible), primary, primary+1)
 	sort.SliceStable(rest, func(i, j int) bool {
-		return rest[i].Channel.EffectivePriority() > rest[j].Channel.EffectivePriority()
+		return rest[i].Provider.EffectivePriority() > rest[j].Provider.EffectivePriority()
 	})
-	return append([]registry.ChannelEntry{eligible[primary]}, rest...)
+	return append([]registry.ProviderEntry{eligible[primary]}, rest...)
 }
 
-// ServesModel: a channel with no model list serves anything; otherwise the model must be listed or mapped.
-func ServesModel(e registry.ChannelEntry, model string) bool {
-	spec := e.Channel.Spec
+// ServesModel: a provider with no model list serves anything; otherwise the model must be listed or mapped.
+func ServesModel(e registry.ProviderEntry, model string) bool {
+	spec := e.Provider.Spec
 	if len(spec.Models) == 0 {
 		return true
 	}
@@ -56,15 +56,15 @@ func ServesModel(e registry.ChannelEntry, model string) bool {
 	return slices.Contains(spec.Models, model) || mapped
 }
 
-// canServe: chat completions work on every channel (Anthropic ones translate), the
-// other APIs only on channels that speak them natively.
-func canServe(api API, channelType string) bool {
+// canServe: chat completions work on every provider (Anthropic ones translate), the
+// other APIs only on providers that speak them natively.
+func canServe(api API, providerType string) bool {
 	switch api {
 	case OpenAI:
 		return true
 	case Anthropic:
-		return channelType == "anthropic"
+		return providerType == "anthropic"
 	default:
-		return channelType != "anthropic"
+		return providerType != "anthropic"
 	}
 }

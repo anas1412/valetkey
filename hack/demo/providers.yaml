@@ -1,4 +1,4 @@
-# Three fake providers (OpenAI-style, Anthropic-style, DeepSeek-style) and the Channels that use
+# Three fake providers (OpenAI-style, Anthropic-style, DeepSeek-style) and the Providers that use
 # them. spec.pricing.provider prices them like the real provider, with live prices.
 apiVersion: v1
 kind: Namespace
@@ -111,7 +111,7 @@ stringData:
   apiKey: sk-ant-demo-not-a-real-key
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: openai
   namespace: valetkey-system
@@ -124,7 +124,7 @@ spec:
   pricing: { provider: openai }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: anthropic
   namespace: valetkey-system
@@ -137,7 +137,7 @@ spec:
   pricing: { provider: anthropic }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata:
   name: deepseek
   namespace: valetkey-system

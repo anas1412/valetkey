@@ -75,8 +75,8 @@ The Secret holds everything an app needs:
 |---|---|
 | `VALETKEY_KEY` | the virtual key |
 | `VALETKEY_ENDPOINT` | the proxy URL |
-| `VALETKEY_GROUP` | the tenant |
-| `VALETKEY_CHANNEL` | the tenant's first provider when the key was issued |
+| `VALETKEY_TENANT` | the tenant |
+| `VALETKEY_PROVIDER` | the tenant's first provider when the key was issued |
 
 ```yaml
 # in a Deployment in the tenant's namespace

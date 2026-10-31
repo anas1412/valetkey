@@ -13,7 +13,7 @@ const STEPS: Array<{ title: string; description: string; route: Route; action: s
 
 /** First-run guide, shown until there is at least one provider, tenant and key. */
 export function GettingStarted({ counts, onNavigate }: { counts: Overview['counts']; onNavigate: (r: Route) => void }) {
-  const current = counts.channels === 0 ? 0 : counts.groups === 0 ? 1 : 2
+  const current = counts.providers === 0 ? 0 : counts.tenants === 0 ? 1 : 2
   const step = STEPS[current]
 
   return (

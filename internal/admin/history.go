@@ -24,11 +24,11 @@ var historyRanges = map[string]historyRange{
 
 // usageHistory is what the Overview shows: totals, a series and the traffic share.
 type usageHistory struct {
-	Totals       map[string]int `json:"totals"`
-	Series       []stats.Bucket `json:"series"`
-	StepMinutes  int            `json:"stepMinutes"`
-	ChannelShare map[string]int `json:"channelShare"`
-	Cost         float64        `json:"cost"` // US dollars over the range
+	Totals        map[string]int `json:"totals"`
+	Series        []stats.Bucket `json:"series"`
+	StepMinutes   int            `json:"stepMinutes"`
+	ProviderShare map[string]int `json:"providerShare"`
+	Cost          float64        `json:"cost"` // US dollars over the range
 }
 
 const errorStatus = `status_code=~"[45].."`
@@ -42,9 +42,9 @@ func promHistory(ctx context.Context, c *promql.Client, rangeName string) (usage
 	step := promDuration(r.step)
 
 	h := usageHistory{
-		Totals:       map[string]int{},
-		StepMinutes:  int(r.step.Minutes()),
-		ChannelShare: map[string]int{},
+		Totals:        map[string]int{},
+		StepMinutes:   int(r.step.Minutes()),
+		ProviderShare: map[string]int{},
 	}
 
 	totals := map[string]string{
@@ -69,13 +69,13 @@ func promHistory(ctx context.Context, c *promql.Client, rangeName string) (usage
 		h.Cost += s.Value
 	}
 
-	share, err := c.Query(ctx, fmt.Sprintf(`sum by (channel) (increase(valetkey_requests_total{channel!="none"}[%s]))`, window), now)
+	share, err := c.Query(ctx, fmt.Sprintf(`sum by (provider) (increase(valetkey_requests_total{provider!="none"}[%s]))`, window), now)
 	if err != nil {
 		return h, err
 	}
 	for _, s := range share {
 		if n := int(math.Round(s.Value)); n > 0 {
-			h.ChannelShare[s.Labels["channel"]] = n
+			h.ProviderShare[s.Labels["provider"]] = n
 		}
 	}
 
@@ -138,11 +138,11 @@ func memoryHistory(st *stats.Stats) usageHistory {
 		t.Cost += b.Cost
 	}
 	return usageHistory{
-		Totals:       map[string]int{"requests": t.Requests, "errors": t.Errors, "inputTokens": t.InputTokens, "outputTokens": t.OutputTokens},
-		Series:       series,
-		StepMinutes:  seriesStepMinutes,
-		ChannelShare: st.ChannelShare(),
-		Cost:         t.Cost,
+		Totals:        map[string]int{"requests": t.Requests, "errors": t.Errors, "inputTokens": t.InputTokens, "outputTokens": t.OutputTokens},
+		Series:        series,
+		StepMinutes:   seriesStepMinutes,
+		ProviderShare: st.ProviderShare(),
+		Cost:          t.Cost,
 	}
 }
 

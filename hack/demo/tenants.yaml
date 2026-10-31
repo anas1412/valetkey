@@ -16,22 +16,22 @@ kind: Namespace
 metadata: { name: research }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata: { name: billing, namespace: valetkey-system }
-spec: { channelRefs: [openai] }
+spec: { providers: [openai] }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata: { name: support, namespace: valetkey-system }
 spec:
-  channelRefs: [openai, anthropic]
+  providers: [openai, anthropic]
   budget: { usd: "20", period: monthly }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata: { name: research, namespace: valetkey-system }
 spec:
-  channelRefs: [openai, anthropic, deepseek]
+  providers: [openai, anthropic, deepseek]
   budget: { usd: "0.50", period: daily }
 ---
 apiVersion: valetkey.dev/v1alpha1

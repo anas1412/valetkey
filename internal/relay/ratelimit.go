@@ -27,7 +27,7 @@ func NewRateLimiter() *RateLimiter {
 }
 
 // Acquire checks the key's RPM and remaining TPM budget and, if allowed, counts the request.
-// Limits ≤ 0 mean unlimited; ratios are the group multipliers (0 = 1).
+// Limits ≤ 0 mean unlimited; ratios are the tenant multipliers (0 = 1).
 // It returns the seconds to wait and which limit was hit, or 0 when allowed.
 func (l *RateLimiter) Acquire(key string, rpm, tpm int, rpmRatio, tpmRatio float64) (retryAfter int, tier string) {
 	l.mu.Lock()

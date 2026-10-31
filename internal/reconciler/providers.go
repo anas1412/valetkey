@@ -14,20 +14,20 @@ import (
 	"github.com/anas1412/valetkey/internal/types"
 )
 
-func (c *Controller) onChannel(obj any) {
-	if ch, ok := types.FromUnstructured[types.Channel](obj); ok {
-		c.resolveChannel(ch)
+func (c *Controller) onProvider(obj any) {
+	if ch, ok := types.FromUnstructured[types.Provider](obj); ok {
+		c.resolveProvider(ch)
 	}
 }
 
-// resolveChannel reads the channel's upstream key from the provider Secret and updates its status.
-// Called from both the channel and secret informers, so it holds chanMu.
-func (c *Controller) resolveChannel(ch *types.Channel) {
+// resolveProvider reads the provider's upstream key from the provider Secret and updates its status.
+// Called from both the provider and secret informers, so it holds chanMu.
+func (c *Controller) resolveProvider(ch *types.Provider) {
 	c.chanMu.Lock()
 	defer c.chanMu.Unlock()
 	key, problem := c.providerKey(ch.Spec.KeySecretRef)
-	old, known := c.registry.Channel(ch.Name)
-	c.registry.UpsertChannel(ch, key)
+	old, known := c.registry.Provider(ch.Name)
+	c.registry.UpsertProvider(ch, key)
 	// A new key (or provider) gets checked once; the verdict lasts until it changes.
 	if key != "" && (!known || !old.SameKey(ch, key)) {
 		go c.checkKey(ch.Name)
@@ -36,10 +36,10 @@ func (c *Controller) resolveChannel(ch *types.Channel) {
 	if prev, seen := c.problems[ch.Name]; !seen || prev != problem {
 		switch {
 		case problem != "":
-			slog.Warn("channel key problem", "channel", ch.Name, "problem", problem)
-			c.stats.Event("warn", "channel-key", fmt.Sprintf("channel %s: %s", ch.Name, problem))
+			slog.Warn("provider key problem", "provider", ch.Name, "problem", problem)
+			c.stats.Event("warn", "provider-key", fmt.Sprintf("provider %s: %s", ch.Name, problem))
 		case seen:
-			c.stats.Event("info", "channel-key", fmt.Sprintf("channel %s: upstream key resolved", ch.Name))
+			c.stats.Event("info", "provider-key", fmt.Sprintf("provider %s: upstream key resolved", ch.Name))
 		}
 		c.problems[ch.Name] = problem
 	}
@@ -47,37 +47,37 @@ func (c *Controller) resolveChannel(ch *types.Channel) {
 	reason, msg := "KeyResolved", "upstream key resolved"
 	if problem != "" {
 		reason, msg = "SecretUnavailable", problem
-	} else if e, _ := c.registry.Channel(ch.Name); e.Rejected != "" {
+	} else if e, _ := c.registry.Provider(ch.Name); e.Rejected != "" {
 		reason, msg = "KeyRejected", e.Rejected
 	}
 	next := status.Ready(ch.Status, reason == "KeyResolved", reason, msg, ch.Generation)
 	if status.Changed(ch.Status, next) && c.leading() {
-		if err := c.kube.PatchStatus(context.Background(), types.ChannelGVR, c.cfg.OperatorNamespace, ch.Name, next); err != nil {
-			slog.Warn("channel status patch failed", "channel", ch.Name, "err", err)
+		if err := c.kube.PatchStatus(context.Background(), types.ProviderGVR, c.cfg.OperatorNamespace, ch.Name, next); err != nil {
+			slog.Warn("provider status patch failed", "provider", ch.Name, "err", err)
 		}
 	}
-	c.channelsChanged()
+	c.providersChanged()
 }
 
-func (c *Controller) onChannelDelete(obj any) {
+func (c *Controller) onProviderDelete(obj any) {
 	if u, ok := obj.(*unstructured.Unstructured); ok {
 		c.chanMu.Lock()
 		defer c.chanMu.Unlock()
-		c.registry.EvictChannel(u.GetName())
+		c.registry.EvictProvider(u.GetName())
 		delete(c.problems, u.GetName())
-		c.channelsChanged()
+		c.providersChanged()
 	}
 }
 
-// onSecret re-resolves every channel that references the changed (or deleted) Secret.
+// onSecret re-resolves every provider that references the changed (or deleted) Secret.
 func (c *Controller) onSecret(obj any) {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return
 	}
-	for _, e := range c.registry.Channels() {
-		if e.Channel.Spec.KeySecretRef.Name == u.GetName() {
-			c.resolveChannel(e.Channel)
+	for _, e := range c.registry.Providers() {
+		if e.Provider.Spec.KeySecretRef.Name == u.GetName() {
+			c.resolveProvider(e.Provider)
 		}
 	}
 }
@@ -96,72 +96,72 @@ func (c *Controller) providerKey(ref types.SecretRef) (key, problem string) {
 	return strings.TrimSpace(string(b)), ""
 }
 
-func (c *Controller) channelsChanged() {
-	c.metrics.ChannelsActive.Reset()
+func (c *Controller) providersChanged() {
+	c.metrics.ProvidersActive.Reset()
 	counts := map[string]int{}
-	for _, e := range c.registry.Channels() {
+	for _, e := range c.registry.Providers() {
 		if e.Usable() {
-			counts[e.Channel.Spec.Type]++
+			counts[e.Provider.Spec.Type]++
 		}
 	}
 	for t, n := range counts {
-		c.metrics.ChannelsActive.WithLabelValues(t).Set(float64(n))
+		c.metrics.ProvidersActive.WithLabelValues(t).Set(float64(n))
 	}
-	for _, g := range c.registry.Groups() {
-		c.refreshGroupStatus(g)
+	for _, g := range c.registry.Tenants() {
+		c.refreshTenantStatus(g)
 	}
 	c.RequeueAll()
 }
 
-func (c *Controller) onGroup(obj any) {
-	g, ok := types.FromUnstructured[types.TenantGroup](obj)
+func (c *Controller) onTenant(obj any) {
+	g, ok := types.FromUnstructured[types.Tenant](obj)
 	if !ok {
 		return
 	}
-	c.registry.UpsertGroup(g)
+	c.registry.UpsertTenant(g)
 	if c.budgets != nil {
 		if limit, err := budget.Parse(g.Spec.Budget); err == nil {
 			c.budgets.Observe(budget.TenantScope(g.Name), limit, g.Status.Spend)
 		}
 	}
-	c.refreshGroupStatus(g)
+	c.refreshTenantStatus(g)
 	c.RequeueAll()
 }
 
-func (c *Controller) onGroupDelete(obj any) {
+func (c *Controller) onTenantDelete(obj any) {
 	if u, ok := obj.(*unstructured.Unstructured); ok {
-		c.registry.EvictGroup(u.GetName())
+		c.registry.EvictTenant(u.GetName())
 		c.RequeueAll()
 	}
 }
 
-// refreshGroupStatus: Ready = enabled and at least one referenced channel is usable.
-func (c *Controller) refreshGroupStatus(g *types.TenantGroup) {
-	usable := len(c.registry.GroupChannels(g.Name))
+// refreshTenantStatus: Ready = enabled and at least one referenced provider is usable.
+func (c *Controller) refreshTenantStatus(g *types.Tenant) {
+	usable := len(c.registry.TenantProviders(g.Name))
 	var missing []string
-	for _, ref := range g.Spec.ChannelRefs {
-		if _, ok := c.registry.Channel(ref); !ok {
+	for _, ref := range g.Spec.Providers {
+		if _, ok := c.registry.Provider(ref); !ok {
 			missing = append(missing, ref)
 		}
 	}
-	reason, msg := "Ready", fmt.Sprintf("%d usable channel(s)", usable)
+	reason, msg := "Ready", fmt.Sprintf("%d usable provider(s)", usable)
 	_, budgetErr := budget.Parse(g.Spec.Budget)
 	switch {
 	case budgetErr != nil:
 		reason, msg = "InvalidBudget", budgetErr.Error()
 	case !g.Enabled():
-		reason, msg = "Disabled", "group is disabled"
+		reason, msg = "Disabled", "tenant is disabled"
 	case usable == 0:
-		reason, msg = "NoChannels", "no referenced channel is enabled with a resolved key"
+		reason, msg = "NoProviders", "no referenced provider is enabled with a resolved key"
 	}
 	if len(missing) > 0 {
-		msg += "; unknown channels: " + strings.Join(missing, ", ")
+		msg += "; unknown providers: " + strings.Join(missing, ", ")
 	}
 	next := status.Ready(g.Status, g.Enabled() && usable > 0 && budgetErr == nil, reason, msg, g.Generation)
 	if !c.leading() || !status.Changed(g.Status, next) {
 		return
 	}
-	if err := c.kube.PatchStatus(context.Background(), types.GroupGVR, c.cfg.OperatorNamespace, g.Name, next); err != nil {
-		slog.Warn("group status patch failed", "group", g.Name, "err", err)
+	if err := c.kube.PatchStatus(context.Background(), types.TenantGVR, c.cfg.OperatorNamespace, g.Name, next); err != nil {
+		slog.Warn("tenant status patch failed", "tenant", g.Name, "err", err)
 	}
 }

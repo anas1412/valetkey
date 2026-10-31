@@ -48,7 +48,7 @@ Without Helm: `kubectl apply -n valetkey-system -f https://github.com/anas1412/v
 
 ```yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel                      # a provider and its real key
+kind: Provider                     # a provider and its real key
 metadata: { name: openai, namespace: valetkey-system }
 spec:
   type: openai
@@ -57,10 +57,10 @@ spec:
   models: [gpt-4o, gpt-4o-mini]
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Group                        # a tenant: named after its namespace
+kind: Tenant                       # a tenant: named after its namespace
 metadata: { name: billing, namespace: valetkey-system }
 spec:
-  channelRefs: [openai]
+  providers: [openai]
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey                     # a virtual key in the tenant's namespace

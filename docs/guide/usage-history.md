@@ -70,23 +70,23 @@ As far as your Prometheus keeps data. Prometheus keeps 15 days by default, so fo
 
 ```promql
 # Tokens per tenant over the last day
-sum by (group) (increase(valetkey_tokens_total[1d]))
+sum by (tenant) (increase(valetkey_tokens_total[1d]))
 
 # Requests per key over the last 30 days
 sum by (proxykey_ns, proxykey_name) (increase(valetkey_requests_total[30d]))
 
 # Share of failed requests per provider, last 5 minutes
-sum by (channel) (rate(valetkey_requests_total{status_code=~"[45].."}[5m]))
-  / sum by (channel) (rate(valetkey_requests_total[5m]))
+sum by (provider) (rate(valetkey_requests_total{status_code=~"[45].."}[5m]))
+  / sum by (provider) (rate(valetkey_requests_total[5m]))
 
 # 95th percentile latency per provider
-histogram_quantile(0.95, sum by (le, channel) (rate(valetkey_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le, provider) (rate(valetkey_request_duration_seconds_bucket[5m])))
 
 # Tokens per model this week
 sum by (model) (increase(valetkey_tokens_total[7d]))
 ```
 
-`group` is the tenant and `channel` is the provider. All metrics are listed in [Monitoring](/guide/monitoring#prometheus-metrics).
+All metrics are listed in [Monitoring](/guide/monitoring#prometheus-metrics).
 
 ## Try it locally
 

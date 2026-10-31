@@ -68,11 +68,11 @@ func validKeySpec(w http.ResponseWriter, s types.ProxyKeySpec) bool {
 	return true
 }
 
-// priceView is what one channel model costs right now.
+// priceView is what one provider model costs right now.
 type priceView struct {
-	Channel  string `json:"channel"`
+	Provider string `json:"provider"`
 	Model    string `json:"model"`
-	Provider string `json:"provider,omitempty"`
+	Catalog  string `json:"catalog,omitempty"` // price catalogue provider id, e.g. deepseek
 	Known    bool   `json:"known"`
 	Source   string `json:"source,omitempty"`
 	Warning  string `json:"warning,omitempty"`
@@ -111,8 +111,8 @@ func (a *API) pricing(w http.ResponseWriter, _ *http.Request) {
 	if !cat.FetchedAt.IsZero() {
 		out.FetchedAt = cat.FetchedAt.Format(time.RFC3339)
 	}
-	for _, e := range a.Registry.Channels() {
-		spec := e.Channel.Spec
+	for _, e := range a.Registry.Providers() {
+		spec := e.Provider.Spec
 		provider := cat.ProviderFor(spec.BaseURL)
 		if spec.Pricing != nil && spec.Pricing.Provider != "" {
 			provider = spec.Pricing.Provider
@@ -122,7 +122,7 @@ func (a *API) pricing(w http.ResponseWriter, _ *http.Request) {
 			if m := spec.ModelMapping[model]; m != "" {
 				upstream = m
 			}
-			v := priceView{Channel: e.Name(), Model: model, Provider: provider}
+			v := priceView{Provider: e.Name(), Model: model, Catalog: provider}
 			if p, ok := a.Prices.Resolve(spec, upstream); ok {
 				r, period := p.At(now, 1, cat.Calendars)
 				v.Known, v.Source, v.Warning, v.Period = true, p.Source, p.Warning, period
@@ -139,8 +139,8 @@ func (a *API) pricing(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 	sort.Slice(out.Prices, func(i, j int) bool {
-		if out.Prices[i].Channel != out.Prices[j].Channel {
-			return out.Prices[i].Channel < out.Prices[j].Channel
+		if out.Prices[i].Provider != out.Prices[j].Provider {
+			return out.Prices[i].Provider < out.Prices[j].Provider
 		}
 		return out.Prices[i].Model < out.Prices[j].Model
 	})

@@ -29,17 +29,17 @@ func (a *API) overview(w http.ResponseWriter, r *http.Request) {
 		rangeName = "24h"
 	}
 
-	type channelHealth struct {
+	type providerHealth struct {
 		Name    string `json:"name"`
 		Type    string `json:"type"`
 		Enabled bool   `json:"enabled"`
 		Ready   bool   `json:"ready"`
 		Message string `json:"message,omitempty"`
 	}
-	channels := []channelHealth{}
-	for _, e := range a.Registry.Channels() {
-		channels = append(channels, channelHealth{Name: e.Name(), Type: e.Channel.Spec.Type, Enabled: e.Channel.Enabled(),
-			Ready: e.UpstreamKey != "", Message: e.Channel.Status.Message})
+	providers := []providerHealth{}
+	for _, e := range a.Registry.Providers() {
+		providers = append(providers, providerHealth{Name: e.Name(), Type: e.Provider.Spec.Type, Enabled: e.Provider.Enabled(),
+			Ready: e.UpstreamKey != "", Message: e.Provider.Status.Message})
 	}
 	writeJSON(w, 200, map[string]any{
 		"proxyURL":         a.Config.ProxyURL,
@@ -51,13 +51,13 @@ func (a *API) overview(w http.ResponseWriter, r *http.Request) {
 		"stepMinutes":      history.StepMinutes,
 		"totals":           history.Totals,
 		"series":           history.Series,
-		"channelShare":     history.ChannelShare,
+		"providerShare":    history.ProviderShare,
 		"cost":             history.Cost,
 		"counts": map[string]int{
-			"channels": len(a.Registry.Channels()), "groups": len(a.Registry.Groups()),
+			"providers": len(a.Registry.Providers()), "tenants": len(a.Registry.Tenants()),
 			"keys": len(a.Controller.ProxyKeys()), "activeKeys": len(a.Registry.Routes()),
 		},
-		"channels": channels,
+		"providers": providers,
 	})
 }
 
@@ -65,7 +65,7 @@ func (a *API) activity(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, map[string]any{"requests": a.Stats.Requests(), "events": a.Stats.Events()})
 }
 
-// namespaces lists namespaces for the tenant picker, flagging which already have a Group.
+// namespaces lists namespaces for the tenant picker, flagging which already have a Tenant.
 func (a *API) namespaces(w http.ResponseWriter, r *http.Request) {
 	names, err := a.Kube.Namespaces(r.Context())
 	if err != nil {
@@ -77,8 +77,8 @@ func (a *API) namespaces(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(n, "kube-") || n == a.Config.OperatorNamespace {
 			continue
 		}
-		_, has := a.Registry.Group(n)
-		out = append(out, map[string]any{"name": n, "hasGroup": has})
+		_, has := a.Registry.Tenant(n)
+		out = append(out, map[string]any{"name": n, "hasTenant": has})
 	}
 	writeJSON(w, 200, out)
 }

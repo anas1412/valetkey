@@ -18,12 +18,12 @@ export function PricingPage() {
   const { data, loading, error } = usePoll(api.pricing, 60_000)
 
   const columns: ColumnDef<ModelPrice & { id: string }>[] = [
-    { id: 'channel', header: 'Provider', accessorKey: 'channel', sortable: true, filterable: true, priority: 'high',
-      filterOptions: [...new Set((data?.prices ?? []).map((p) => p.channel))].map((c) => ({ label: c, value: c })),
+    { id: 'provider', header: 'Provider', accessorKey: 'provider', sortable: true, filterable: true, priority: 'high',
+      filterOptions: [...new Set((data?.prices ?? []).map((p) => p.provider))].map((c) => ({ label: c, value: c })),
       cell: ({ row }) => (
         <div>
-          <div className="font-medium text-text-primary">{row.channel}</div>
-          <div className="text-xs text-text-muted">{row.provider ? `priced as ${row.provider}` : 'provider unknown'}</div>
+          <div className="font-medium text-text-primary">{row.provider}</div>
+          <div className="text-xs text-text-muted">{row.catalog ? `priced as ${row.catalog}` : 'price catalogue unknown'}</div>
         </div>
       ) },
     { id: 'model', header: 'Model', accessorKey: 'model', sortable: true, priority: 'high' },
@@ -52,7 +52,7 @@ export function PricingPage() {
       ) },
     { id: 'source', header: 'Source', accessorFn: (p) => p.source ?? '', priority: 'low',
       cell: ({ row }) => !row.known
-        ? <Badge tone="warning" dot title="Requests with a budget are refused until it has a price. Set spec.pricing on the channel.">No price</Badge>
+        ? <Badge tone="warning" dot title="Requests with a budget are refused until it has a price. Set spec.pricing on the provider.">No price</Badge>
         : row.warning ? <Badge tone="warning" title={row.warning}>{row.source}, check</Badge>
         : <span className="text-text-secondary">{row.source}</span> },
   ]
@@ -83,7 +83,7 @@ export function PricingPage() {
         </Panel>
       )}
       <AdvancedDataTable
-        data={(data?.prices ?? []).map((p) => ({ ...p, id: `${p.channel}/${p.model}` }))}
+        data={(data?.prices ?? []).map((p) => ({ ...p, id: `${p.provider}/${p.model}` }))}
         columns={columns}
         getRowId={(r) => r.id}
         isLoading={loading}

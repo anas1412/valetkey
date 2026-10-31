@@ -33,6 +33,6 @@ The service account can:
 - read and write `proxykeys` in every namespace, and their status;
 - create, update and delete Secrets in every namespace (key Secrets have generated names, so they can't be narrowed with `resourceNames`);
 - list namespaces (for the dashboard's tenant picker);
-- read and write `channels` and `groups` and their status, and Secrets, in its own namespace.
+- read and write `providers` and `tenants` and their status, and Secrets, in its own namespace.
 
 See [`charts/valetkey/templates/rbac.yaml`](https://github.com/anas1412/valetkey/blob/main/charts/valetkey/templates/rbac.yaml).

@@ -11,7 +11,7 @@ import (
 	"github.com/anas1412/valetkey/internal/types"
 )
 
-// JoinURL joins an API path onto a channel base URL, keeping any path prefix in the
+// JoinURL joins an API path onto a provider base URL, keeping any path prefix in the
 // base (e.g. https://openrouter.ai/api). A base already ending in /v1 is not doubled.
 func JoinURL(base, apiPath string) (string, error) {
 	u, err := url.Parse(base)
@@ -26,8 +26,8 @@ func JoinURL(base, apiPath string) (string, error) {
 	return u.String(), nil
 }
 
-// Transports gives each channel an HTTP client honoring skipTLSVerify and proxyURL.
-// Clients are rebuilt when the channel changes (new resourceVersion).
+// Transports gives each provider an HTTP client honoring skipTLSVerify and proxyURL.
+// Clients are rebuilt when the provider changes (new resourceVersion).
 type Transports struct {
 	mu    sync.Mutex
 	cache map[string]cached
@@ -42,7 +42,7 @@ var defaultClient = &http.Client{Transport: newTransport(nil, false)}
 
 func NewTransports() *Transports { return &Transports{cache: map[string]cached{}} }
 
-func (t *Transports) Client(ch *types.Channel) *http.Client {
+func (t *Transports) Client(ch *types.Provider) *http.Client {
 	if !ch.Spec.SkipTLSVerify && ch.Spec.ProxyURL == "" {
 		return defaultClient
 	}
@@ -73,7 +73,7 @@ func newTransport(proxy *url.URL, skipTLS bool) *http.Transport {
 	// Ask for identity encoding so bodies can be parsed for usage and translated.
 	tr.DisableCompression = true
 	if skipTLS {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // opt-in per channel
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // opt-in per provider
 	}
 	return tr
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/anas1412/valetkey/internal/types"
 )
 
-// A key with a $0.004 budget on a channel priced at $10/M input and $30/M output.
+// A key with a $0.004 budget on a provider priced at $10/M input and $30/M output.
 // Each request uses 10 input and 4 output tokens ($0.00022), but reserves its worst case.
 func TestBudgetStopsBeforeOverspending(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -28,16 +28,16 @@ func TestBudgetStopsBeforeOverspending(t *testing.T) {
 	defer upstream.Close()
 
 	reg := registry.New()
-	reg.UpsertChannel(&types.Channel{ObjectMeta: metav1.ObjectMeta{Name: "ok"}, Spec: types.ChannelSpec{
+	reg.UpsertProvider(&types.Provider{ObjectMeta: metav1.ObjectMeta{Name: "ok"}, Spec: types.ProviderSpec{
 		Type: "openai", BaseURL: upstream.URL, Models: []string{"priced", "unpriced"}, KeySecretRef: types.SecretRef{Name: "s"},
-		Pricing: &types.ChannelPricing{Models: map[string]types.ModelPrice{"priced": {Input: "10", Output: "30"}}}}}, "k")
-	reg.UpsertGroup(&types.TenantGroup{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.GroupSpec{ChannelRefs: []string{"ok"}}})
+		Pricing: &types.ProviderPricing{Models: map[string]types.ModelPrice{"priced": {Input: "10", Output: "30"}}}}}, "k")
+	reg.UpsertTenant(&types.Tenant{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.TenantSpec{Providers: []string{"ok"}}})
 
 	limit, _ := budget.Parse(&types.Budget{USD: "0.004", Period: "daily"})
 	tracker, st := budget.NewTracker("test"), stats.New()
 	rl := &Relay{Registry: reg, Limiter: NewRateLimiter(), Metrics: metrics.New(), Stats: st, Transports: NewTransports(),
 		Prices: &pricing.Store{}, Budgets: tracker}
-	route := registry.Route{Group: "team", Namespace: "team", ProxyKeyName: "app", Budget: limit}
+	route := registry.Route{Tenant: "team", Namespace: "team", ProxyKeyName: "app", Budget: limit}
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rl.ChatCompletions(w, r.WithContext(auth.WithRoute(r.Context(), route)))
 	}))

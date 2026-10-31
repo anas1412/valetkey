@@ -20,7 +20,7 @@ type StreamTranslator interface {
 	End() string
 }
 
-// adaptation is a client request adapted for one channel.
+// adaptation is a client request adapted for one provider.
 type adaptation struct {
 	url     string
 	headers http.Header
@@ -31,9 +31,9 @@ type adaptation struct {
 }
 
 // adapt builds the upstream request: model mapping, auth, the key's default output
-// cap, and translation when an OpenAI client hits an Anthropic channel.
-func adapt(e registry.ChannelEntry, api API, body map[string]any, in http.Header, defaultMaxTokens int) (*adaptation, error) {
-	spec := e.Channel.Spec
+// cap, and translation when an OpenAI client hits an Anthropic provider.
+func adapt(e registry.ProviderEntry, api API, body map[string]any, in http.Header, defaultMaxTokens int) (*adaptation, error) {
+	spec := e.Provider.Spec
 	out := make(map[string]any, len(body))
 	for k, v := range body {
 		out[k] = v
@@ -84,7 +84,7 @@ func adapt(e registry.ChannelEntry, api API, body map[string]any, in http.Header
 
 // maxTokensField is the output cap parameter the upstream understands. OpenAI's own
 // API rejects max_tokens on newer models; compatible servers mostly only know it.
-func maxTokensField(api API, spec types.ChannelSpec) string {
+func maxTokensField(api API, spec types.ProviderSpec) string {
 	switch {
 	case api == Embeddings:
 		return ""

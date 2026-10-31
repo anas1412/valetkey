@@ -10,36 +10,36 @@ Scrape `http://valetkey.valetkey-system:8081/metrics`, or enable the chart's `se
 
 | Metric | Type | Labels |
 |---|---|---|
-| `valetkey_requests_total` | Counter | channel, model, group, proxykey_ns, proxykey_name, status_code |
-| `valetkey_tokens_total` | Counter | channel, model, group, type |
-| `valetkey_errors_total` | Counter | channel, model, group, error_type |
-| `valetkey_rate_limited_total` | Counter | group, tier |
-| `valetkey_request_duration_seconds` | Histogram | channel, model |
-| `valetkey_ttfb_seconds` | Histogram | channel, model |
-| `valetkey_upstream_duration_seconds` | Histogram | channel, model |
-| `valetkey_retries_total` | Counter | channel |
-| `valetkey_channel_errors_total` | Counter | channel |
-| `valetkey_keys_minted_total` | Counter | group |
-| `valetkey_cost_usd_total` | Counter | channel, model, group, proxykey_ns, proxykey_name |
+| `valetkey_requests_total` | Counter | provider, model, tenant, proxykey_ns, proxykey_name, status_code |
+| `valetkey_tokens_total` | Counter | provider, model, tenant, type |
+| `valetkey_errors_total` | Counter | provider, model, tenant, error_type |
+| `valetkey_rate_limited_total` | Counter | tenant, tier |
+| `valetkey_request_duration_seconds` | Histogram | provider, model |
+| `valetkey_ttfb_seconds` | Histogram | provider, model |
+| `valetkey_upstream_duration_seconds` | Histogram | provider, model |
+| `valetkey_retries_total` | Counter | provider |
+| `valetkey_provider_errors_total` | Counter | provider |
+| `valetkey_keys_minted_total` | Counter | tenant |
+| `valetkey_cost_usd_total` | Counter | provider, model, tenant, proxykey_ns, proxykey_name |
 | `valetkey_budget_spent_usd` | Gauge | scope (key, tenant), name |
 | `valetkey_budget_usd` | Gauge | scope, name |
-| `valetkey_budget_rejections_total` | Counter | group, scope |
+| `valetkey_budget_rejections_total` | Counter | tenant, scope |
 | `valetkey_pricing_fetched_timestamp_seconds` | Gauge | |
 | `valetkey_pricing_source_up` | Gauge | source |
-| `valetkey_channels_active` | Gauge | type |
-| `valetkey_proxykeys_active` | Gauge | group |
+| `valetkey_providers_active` | Gauge | type |
+| `valetkey_proxykeys_active` | Gauge | tenant |
 
-Plus the standard Go and process metrics. `channel` is the provider and `group` is the tenant.
+Plus the standard Go and process metrics.
 
 ### Example queries
 
 ```promql
 # Tokens per tenant over the last day
-sum by (group) (increase(valetkey_tokens_total[1d]))
+sum by (tenant) (increase(valetkey_tokens_total[1d]))
 
 # Error rate per provider
-sum by (channel) (rate(valetkey_requests_total{status_code=~"5.."}[5m]))
-  / sum by (channel) (rate(valetkey_requests_total[5m]))
+sum by (provider) (rate(valetkey_requests_total{status_code=~"5.."}[5m]))
+  / sum by (provider) (rate(valetkey_requests_total[5m]))
 ```
 
 ## Alerts
@@ -71,6 +71,6 @@ kubectl get events -A --field-selector reason=BudgetReached
 Every resource reports a `Ready` condition:
 
 ```bash
-kubectl get chan,grp -n valetkey-system
+kubectl get prov,tn -n valetkey-system
 kubectl get pkey -A
 ```

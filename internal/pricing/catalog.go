@@ -25,7 +25,7 @@ type Source struct {
 	Error string `json:"error,omitempty"`
 }
 
-// ProviderFor guesses the catalogue provider from a channel's base URL.
+// ProviderFor guesses the catalogue provider from a provider's base URL.
 func (c *Catalog) ProviderFor(baseURL string) string {
 	u, err := url.Parse(baseURL)
 	if err != nil {

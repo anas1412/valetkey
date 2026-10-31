@@ -27,7 +27,7 @@ There's no admin password to set. The optional dashboard and the admin API only 
 
 ## 2. Add a provider
 
-Store the provider's real API key in a Secret, then point a `Channel` at it:
+Store the provider's real API key in a Secret, then point a `Provider` at it:
 
 ```bash
 kubectl create secret generic openai-key -n valetkey-system --from-literal=apiKey=sk-YOUR_REAL_KEY
@@ -35,7 +35,7 @@ kubectl create secret generic openai-key -n valetkey-system --from-literal=apiKe
 
 ```yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata: { name: openai, namespace: valetkey-system }
 spec:
   type: openai
@@ -46,14 +46,14 @@ spec:
 
 ## 3. Create a tenant and a key
 
-A tenant is a `Group` named after the tenant's namespace; keys are `ProxyKey`s in that namespace:
+A tenant is a `Tenant` named after the tenant's namespace; keys are `ProxyKey`s in that namespace:
 
 ```yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata: { name: billing, namespace: valetkey-system }
 spec:
-  channelRefs: [openai]
+  providers: [openai]
 ---
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey

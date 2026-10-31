@@ -107,11 +107,11 @@ func TestRateLimiter(t *testing.T) {
 
 func TestCandidates(t *testing.T) {
 	reg := registry.New()
-	reg.UpsertChannel(channel("oa", "openai", 10, []string{"gpt-4o"}, nil, ""), "k1")
-	reg.UpsertChannel(channel("an", "anthropic", 10, []string{"claude-x"}, map[string]string{"gpt-4o": "claude-x"}, ""), "k2")
-	reg.UpsertChannel(channel("off", "openai", 10, nil, nil, types.Disabled), "k3")
-	reg.UpsertChannel(channel("nokey", "openai", 10, nil, nil, ""), "")
-	reg.UpsertGroup(&types.TenantGroup{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.GroupSpec{ChannelRefs: []string{"oa", "an", "off", "nokey"}}})
+	reg.UpsertProvider(provider("oa", "openai", 10, []string{"gpt-4o"}, nil, ""), "k1")
+	reg.UpsertProvider(provider("an", "anthropic", 10, []string{"claude-x"}, map[string]string{"gpt-4o": "claude-x"}, ""), "k2")
+	reg.UpsertProvider(provider("off", "openai", 10, nil, nil, types.Disabled), "k3")
+	reg.UpsertProvider(provider("nokey", "openai", 10, nil, nil, ""), "")
+	reg.UpsertTenant(&types.Tenant{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.TenantSpec{Providers: []string{"oa", "an", "off", "nokey"}}})
 
 	check := func(model string, api API, want ...string) {
 		t.Helper()
@@ -130,14 +130,14 @@ func TestCandidates(t *testing.T) {
 	check("gpt-4o", Anthropic, "an")
 	check("unknown", OpenAI)
 	if len(Candidates(reg, "other", "gpt-4o", OpenAI)) != 0 {
-		t.Error("unknown group must have no candidates")
+		t.Error("unknown tenant must have no candidates")
 	}
 }
 
-func channel(name, typ string, prio int, models []string, mapping map[string]string, status string) *types.Channel {
-	return &types.Channel{
+func provider(name, typ string, prio int, models []string, mapping map[string]string, status string) *types.Provider {
+	return &types.Provider{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: types.ChannelSpec{Type: typ, BaseURL: "http://x", Priority: prio, Models: models, ModelMapping: mapping, Status: status,
+		Spec: types.ProviderSpec{Type: typ, BaseURL: "http://x", Priority: prio, Models: models, ModelMapping: mapping, Status: status,
 			KeySecretRef: types.SecretRef{Name: "s"}},
 	}
 }

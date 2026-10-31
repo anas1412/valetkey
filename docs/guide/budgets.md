@@ -21,10 +21,10 @@ On a tenant, for all of its keys together:
 
 ```yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata: { name: billing, namespace: valetkey-system }
 spec:
-  channelRefs: [openai]
+  providers: [openai]
   budget: { usd: "200", period: monthly }
 ```
 
@@ -91,10 +91,10 @@ No provider offers a pricing API, so Valetkey combines public sources and refres
 | [DeepSeek's pricing page](https://api-docs.deepseek.com/quick_start/pricing) | Peak hours, read from DeepSeek's own page |
 | [holiday-cn](https://github.com/NateScarlet/holiday-cn) | China's official public holidays, which DeepSeek bills at off-peak prices |
 
-The provider is guessed from the channel's `baseURL` (`api.openai.com`, `api.anthropic.com`, `api.deepseek.com`, `api.groq.com`, `openrouter.ai` and others). For a gateway, a proxy or any other address, name it:
+The provider is guessed from the provider's `baseURL` (`api.openai.com`, `api.anthropic.com`, `api.deepseek.com`, `api.groq.com`, `openrouter.ai` and others). For a gateway, a proxy or any other address, name it:
 
 ```yaml
-kind: Channel
+kind: Provider
 spec:
   baseURL: https://llm-gateway.internal
   pricing:
@@ -111,10 +111,10 @@ The Pricing page shows whether a model is at peak price right now and when that 
 
 ## Your own prices
 
-Negotiated rates, self-hosted models and Azure deployment names go on the channel, in dollars per million tokens. They win over every other source:
+Negotiated rates, self-hosted models and Azure deployment names go on the provider, in dollars per million tokens. They win over every other source:
 
 ```yaml
-kind: Channel
+kind: Provider
 spec:
   pricing:
     models:
@@ -126,11 +126,11 @@ spec:
 
 ## No price known
 
-A key or tenant with a budget can only use models with a known price, so the budget can be enforced. Its requests for other models get **403** `model_not_priced`. Add a price on the channel to fix it. Without a budget, such requests go through and show as "unpriced" in Activity.
+A key or tenant with a budget can only use models with a known price, so the budget can be enforced. Its requests for other models get **403** `model_not_priced`. Add a price on the provider to fix it. Without a budget, such requests go through and show as "unpriced" in Activity.
 
 ## Seeing spend
 
-- `kubectl get pkey -A` and `kubectl get grp -n valetkey-system` show **Spent** and **Budget** columns. The exact amount is in `status.spend`.
+- `kubectl get pkey -A` and `kubectl get tn -n valetkey-system` show **Spent** and **Budget** columns. The exact amount is in `status.spend`.
 - The dashboard shows a spend bar on keys and tenants, a Spend card on the Overview, the cost of each request in Activity, and a **Pricing** page.
 - Prometheus: `valetkey_cost_usd_total`, `valetkey_budget_spent_usd`, `valetkey_budget_usd` and `valetkey_budget_rejections_total`. The [Grafana dashboard](/guide/usage-history#_3-add-the-grafana-dashboard) has spend per tenant and budget use.
 
@@ -149,10 +149,10 @@ With the Prometheus Operator, `prometheusRule.enabled: true` in the Helm values 
 
 ## Without internet access
 
-Set `pricing.refreshInterval: "off"` in the Helm values. Valetkey then uses the prices built into its image, plus your channel overrides. Otherwise it needs to reach `models.dev`, `openrouter.ai`, `api-docs.deepseek.com` and `raw.githubusercontent.com`.
+Set `pricing.refreshInterval: "off"` in the Helm values. Valetkey then uses the prices built into its image, plus your provider price overrides. Otherwise it needs to reach `models.dev`, `openrouter.ai`, `api-docs.deepseek.com` and `raw.githubusercontent.com`.
 
 ## Good to know
 
-- The provider's invoice is what you actually pay. Valetkey's numbers follow the public list price. Credits, taxes, enterprise discounts and batch pricing are only known through your own channel prices.
+- The provider's invoice is what you actually pay. Valetkey's numbers follow the public list price. Credits, taxes, enterprise discounts and batch pricing are only known through your own provider prices.
 - Price catalogues can lag a provider's price change by a few hours.
 - With [two replicas](/guide/limits#scaling), budgets are shared through status. Together the pods can go over a budget by what they spend in 5 seconds; with one replica, never.

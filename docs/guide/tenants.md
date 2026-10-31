@@ -1,6 +1,6 @@
 # Tenants
 
-A tenant (Kubernetes kind: `Group`) is a namespace that is allowed to use Valetkey. Its name **is** the namespace name, and every API key in that namespace belongs to it. A tenant can be a team, an app, a customer or an environment: whatever you split by namespace.
+A `Tenant` is a namespace that is allowed to use Valetkey. Its name **is** the namespace name, and every API key in that namespace belongs to it. A tenant can be a team, an app, a customer or an environment: whatever you split by namespace.
 
 <Shot name="tenants" alt="Tenants list" />
 
@@ -8,12 +8,12 @@ A tenant (Kubernetes kind: `Group`) is a namespace that is allowed to use Valetk
 
 ```yaml
 apiVersion: valetkey.dev/v1alpha1
-kind: Group
+kind: Tenant
 metadata:
   name: billing               # = the tenant namespace
   namespace: valetkey-system
 spec:
-  channelRefs: [openai, anthropic]
+  providers: [openai, anthropic]
   rpmRatio: 1.0
   tpmRatio: 1.0
 ```

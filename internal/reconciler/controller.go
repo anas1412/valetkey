@@ -1,4 +1,4 @@
-// Package reconciler watches Channels, Groups, provider Secrets and ProxyKeys,
+// Package reconciler watches Providers, Tenants, provider Secrets and ProxyKeys,
 // keeps the registry current, mints virtual keys and writes CRD status.
 package reconciler
 
@@ -37,17 +37,17 @@ type Controller struct {
 	budgets  *budget.Tracker // optional
 	// IsLeader says whether this replica writes (mints keys, CRD status). Nil = always.
 	IsLeader func() bool
-	// CheckKey asks a provider whether it accepts a channel's key and returns why it
+	// CheckKey asks a provider whether it accepts a provider's key and returns why it
 	// refused (HTTP 401/403), or "". Nil = keys are never checked.
-	CheckKey func(ctx context.Context, ch *types.Channel, key string) (rejected string)
+	CheckKey func(ctx context.Context, ch *types.Provider, key string) (rejected string)
 
 	queue     workqueue.TypedRateLimitingInterface[string]
 	proxyKeys cache.GenericLister
 	secrets   cache.GenericLister
 	ready     atomic.Bool
 	chanMu    sync.Mutex
-	problems  map[string]string // channel → last reported key problem; guarded by chanMu
-	rechecks  map[string]bool   // channels with a pending recheck of a rejected key; guarded by chanMu
+	problems  map[string]string // provider → last reported key problem; guarded by chanMu
+	rechecks  map[string]bool   // providers with a pending recheck of a rejected key; guarded by chanMu
 }
 
 func New(cfg config.Config, k *kube.Client, reg *registry.Registry, m *metrics.Metrics, st *stats.Stats, b *budget.Tracker) *Controller {
@@ -67,7 +67,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	local := dynamicinformer.NewFilteredDynamicSharedInformerFactory(c.kube.Dynamic, resync, ns, nil)
 	cluster := dynamicinformer.NewDynamicSharedInformerFactory(c.kube.Dynamic, resync)
 
-	// Provider Secrets load first, so channels resolve their keys on the first pass
+	// Provider Secrets load first, so providers resolve their keys on the first pass
 	// instead of briefly reporting "secret not found" on every restart.
 	secrets := local.ForResource(types.SecretGVR)
 	c.secrets = secrets.Lister()
@@ -76,19 +76,19 @@ func (c *Controller) Run(ctx context.Context) error {
 		return ctx.Err()
 	}
 
-	channels := local.ForResource(types.ChannelGVR)
-	groups := local.ForResource(types.GroupGVR)
+	providers := local.ForResource(types.ProviderGVR)
+	tenants := local.ForResource(types.TenantGVR)
 	proxyKeys := cluster.ForResource(types.ProxyKeyGVR)
 	c.proxyKeys = proxyKeys.Lister()
 
-	channels.Informer().AddEventHandler(handler(c.onChannel, c.onChannelDelete, nil))
-	groups.Informer().AddEventHandler(handler(c.onGroup, c.onGroupDelete, c.onSpendUpdate))
+	providers.Informer().AddEventHandler(handler(c.onProvider, c.onProviderDelete, nil))
+	tenants.Informer().AddEventHandler(handler(c.onTenant, c.onTenantDelete, c.onSpendUpdate))
 	secrets.Informer().AddEventHandler(handler(c.onSecret, c.onSecret, nil))
 	proxyKeys.Informer().AddEventHandler(handler(c.enqueue, c.onProxyKeyDelete, c.onSpendUpdate))
 
 	local.Start(ctx.Done()) // starts the informers added since the first Start
 	cluster.Start(ctx.Done())
-	for _, inf := range []cache.SharedIndexInformer{channels.Informer(), groups.Informer(), proxyKeys.Informer()} {
+	for _, inf := range []cache.SharedIndexInformer{providers.Informer(), tenants.Informer(), proxyKeys.Informer()} {
 		if !cache.WaitForCacheSync(ctx.Done(), inf.HasSynced) {
 			return ctx.Err()
 		}
@@ -104,16 +104,16 @@ func (c *Controller) Run(ctx context.Context) error {
 
 // BecameLeader catches up on writes the previous leader may have left undone.
 func (c *Controller) BecameLeader() {
-	for _, e := range c.registry.Channels() {
-		c.resolveChannel(e.Channel)
+	for _, e := range c.registry.Providers() {
+		c.resolveProvider(e.Provider)
 	}
-	for _, g := range c.registry.Groups() {
-		c.refreshGroupStatus(g)
+	for _, g := range c.registry.Tenants() {
+		c.refreshTenantStatus(g)
 	}
 	c.RequeueAll()
 }
 
-// RequeueAll re-reconciles every ProxyKey (after a Group or Channel change).
+// RequeueAll re-reconciles every ProxyKey (after a Tenant or Provider change).
 func (c *Controller) RequeueAll() {
 	if c.proxyKeys == nil {
 		return

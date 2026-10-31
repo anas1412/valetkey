@@ -36,8 +36,8 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		return fmt.Errorf("cannot decode ProxyKey")
 	}
 	uid := string(pk.UID)
-	// The group is always the ProxyKey's namespace; tenants can't pick another one.
-	group := ns
+	// The tenant is always the ProxyKey's namespace; tenants can't pick another one.
+	tenant := ns
 
 	notReady := func(reason, msg string) error {
 		c.registry.EvictRoute(uid)
@@ -48,16 +48,16 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	if !pk.Enabled() {
 		return notReady("Disabled", "key is disabled")
 	}
-	g, ok := c.registry.Group(group)
+	g, ok := c.registry.Tenant(tenant)
 	if !ok {
-		return notReady("GroupNotFound", fmt.Sprintf("group %q not found", group))
+		return notReady("TenantNotFound", fmt.Sprintf("tenant %q not found", tenant))
 	}
 	if !g.Enabled() {
-		return notReady("GroupDisabled", fmt.Sprintf("group %q is disabled", group))
+		return notReady("TenantDisabled", fmt.Sprintf("tenant %q is disabled", tenant))
 	}
-	channels := c.registry.GroupChannels(group)
-	if len(channels) == 0 {
-		return notReady("NoChannels", fmt.Sprintf("group %q has no enabled channels with a resolved key", group))
+	providers := c.registry.TenantProviders(tenant)
+	if len(providers) == 0 {
+		return notReady("NoProviders", fmt.Sprintf("tenant %q has no enabled providers with a resolved key", tenant))
 	}
 	var allow keys.AllowList
 	if len(pk.Spec.Subnets) > 0 {
@@ -112,7 +112,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	if needsKey {
 		virtual := keys.Generate()
 		keyHash = keys.Hash(virtual)
-		if err := c.writeTenantSecret(ctx, pk, secretName, virtual, channels[0].Name(), group); err != nil {
+		if err := c.writeTenantSecret(ctx, pk, secretName, virtual, providers[0].Name(), tenant); err != nil {
 			return err
 		}
 		slog.Info("minted key", "proxykey", id, "secret", secretName, "rotation", rotateDue)
@@ -121,7 +121,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 			msg = fmt.Sprintf("rotated key for %s (%s=%s); the old key no longer works", id, types.RotateAnnotation, rotate)
 		}
 		c.stats.Event("info", "key-minted", msg)
-		c.metrics.KeysMinted.WithLabelValues(group).Inc()
+		c.metrics.KeysMinted.WithLabelValues(tenant).Inc()
 	} else if keyHash == "" {
 		keyHash = secretHash
 	}
@@ -131,7 +131,7 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 		models = pk.Spec.Models
 	}
 	c.registry.UpsertRoute(uid, registry.Route{
-		KeyHash: keyHash, Group: group, Namespace: ns, ProxyKeyName: name,
+		KeyHash: keyHash, Tenant: tenant, Namespace: ns, ProxyKeyName: name,
 		Models: models, AllowList: allow, RPM: pk.Spec.RPM, TPM: pk.Spec.TPM, Budget: limit, ModelBudgets: modelLimits,
 		MaxTokens: pk.Spec.MaxTokens, ExpiresAt: expires,
 	})
@@ -142,19 +142,19 @@ func (c *Controller) reconcile(ctx context.Context, id string) error {
 	return c.setStatus(ctx, pk, next)
 }
 
-func (c *Controller) writeTenantSecret(ctx context.Context, pk *types.ProxyKey, secretName, key, channel, group string) error {
+func (c *Controller) writeTenantSecret(ctx context.Context, pk *types.ProxyKey, secretName, key, provider, tenant string) error {
 	f := false
 	t := true
 	owner := &metav1.OwnerReference{
-		APIVersion: types.Group + "/" + types.Version, Kind: "ProxyKey",
+		APIVersion: types.APIGroup + "/" + types.Version, Kind: "ProxyKey",
 		Name: pk.Name, UID: pk.UID, Controller: &t, BlockOwnerDeletion: &f,
 	}
 	return c.kube.ApplySecret(ctx, pk.Namespace, secretName, map[string]string{"app.kubernetes.io/managed-by": "valetkey"}, owner,
 		map[string]string{
 			"VALETKEY_KEY":      key,
 			"VALETKEY_ENDPOINT": c.cfg.ProxyURL,
-			"VALETKEY_CHANNEL":  channel,
-			"VALETKEY_GROUP":    group,
+			"VALETKEY_PROVIDER": provider,
+			"VALETKEY_TENANT":   tenant,
 		})
 }
 
@@ -179,11 +179,11 @@ func (c *Controller) onProxyKeyDelete(obj any) {
 
 func (c *Controller) refreshKeyGauge() {
 	counts := map[string]int{}
-	for _, g := range c.registry.Groups() {
+	for _, g := range c.registry.Tenants() {
 		counts[g.Name] = 0
 	}
 	for _, r := range c.registry.Routes() {
-		counts[r.Group]++
+		counts[r.Tenant]++
 	}
 	c.metrics.ProxyKeysActive.Reset()
 	for g, n := range counts {
@@ -217,7 +217,7 @@ func (c *Controller) onSpendUpdate(obj any) {
 		c.observeKeySpend(pk, budget.ParseCached(pk.Spec.Budget), models)
 		return
 	}
-	if g, ok := types.FromUnstructured[types.TenantGroup](obj); ok && g.Kind == "Group" {
+	if g, ok := types.FromUnstructured[types.Tenant](obj); ok && g.Kind == "Tenant" {
 		c.budgets.Observe(budget.TenantScope(g.Name), budget.ParseCached(g.Spec.Budget), g.Status.Spend)
 	}
 }

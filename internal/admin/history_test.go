@@ -25,8 +25,8 @@ func fakePrometheus(t *testing.T) *httptest.Server {
 		case "/api/v1/query":
 			result := `[{"metric":{},"value":[0,"%s"]}]`
 			switch {
-			case strings.Contains(q, "by (channel)"):
-				fmt.Fprint(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"channel":"openai"},"value":[0,"90"]},{"metric":{"channel":"anthropic"},"value":[0,"30"]}]}}`)
+			case strings.Contains(q, "by (provider)"):
+				fmt.Fprint(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"provider":"openai"},"value":[0,"90"]},{"metric":{"provider":"anthropic"},"value":[0,"30"]}]}}`)
 				return
 			case strings.Contains(q, "by (proxykey_ns, proxykey_name)"):
 				fmt.Fprint(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"proxykey_ns":"billing","proxykey_name":"invoice-api"},"value":[0,"42"]}]}}`)
@@ -88,7 +88,7 @@ func TestOverviewFromPrometheus(t *testing.T) {
 	if totals["requests"] != 120.0 || totals["errors"] != 6.0 || totals["inputTokens"] != 1000.0 || totals["outputTokens"] != 250.0 {
 		t.Fatalf("totals %v", totals)
 	}
-	share := out["channelShare"].(map[string]any)
+	share := out["providerShare"].(map[string]any)
 	if share["openai"] != 90.0 || share["anthropic"] != 30.0 {
 		t.Fatalf("share %v", share)
 	}
@@ -107,7 +107,7 @@ func TestOverviewFromPrometheus(t *testing.T) {
 func TestOverviewFallsBackWhenPrometheusIsDown(t *testing.T) {
 	api := &API{Registry: registry.New(), Stats: stats.New(), Prom: promql.New("http://127.0.0.1:1")}
 	api.Controller = nilController()
-	api.Stats.RecordRequest(stats.RequestEntry{Time: time.Now().UnixMilli(), Namespace: "billing", Key: "k", Channel: "openai", Status: 200, InputTokens: 3})
+	api.Stats.RecordRequest(stats.RequestEntry{Time: time.Now().UnixMilli(), Namespace: "billing", Key: "k", Provider: "openai", Status: 200, InputTokens: 3})
 
 	out := overviewOf(t, api, "?range=30d")
 	if out["source"] != "memory" || out["range"] != "24h" || out["warning"] == "" {

@@ -110,9 +110,9 @@ func (s *Store) Catalog() *Catalog {
 	return s.cat
 }
 
-// Resolve prices a model on a channel: the channel's own override first, then the
-// catalogue entry for the channel's provider. model is the upstream model name.
-func (s *Store) Resolve(spec types.ChannelSpec, model string) (Price, bool) {
+// Resolve prices a model on a provider: the provider's own override first, then the
+// catalogue entry for the provider's provider. model is the upstream model name.
+func (s *Store) Resolve(spec types.ProviderSpec, model string) (Price, bool) {
 	if spec.Pricing != nil {
 		if mp, ok := spec.Pricing.Models[model]; ok {
 			p, err := overridePrice(mp)
@@ -160,11 +160,11 @@ func overridePrice(mp types.ModelPrice) (Price, error) {
 	if mp.CacheWrite != "" && mp.CacheWrite1h == "" {
 		r.CacheWrite1h = r.CacheWrite5m
 	}
-	return Price{Rates: r, Source: "channel override"}, nil
+	return Price{Rates: r, Source: "provider override"}, nil
 }
 
-// ValidateOverrides reports the first unreadable price in a channel's overrides.
-func ValidateOverrides(p *types.ChannelPricing) error {
+// ValidateOverrides reports the first unreadable price in a provider's overrides.
+func ValidateOverrides(p *types.ProviderPricing) error {
 	if p == nil {
 		return nil
 	}

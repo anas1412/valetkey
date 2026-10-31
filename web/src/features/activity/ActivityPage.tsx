@@ -20,12 +20,12 @@ function fromRequest(r: RequestEntry, i: number): ActivityEvent {
     id: `r-${r.time}-${i}`,
     type: failed ? 'error' : 'api',
     status: failed ? (r.status === 429 || r.status === 403 ? 'warning' : 'error') : 'success',
-    title: `${r.status} · ${r.model} → ${r.channel}`,
+    title: `${r.status} · ${r.model} → ${r.provider}`,
     description: `${r.namespace}/${r.key}${r.error ? ` · ${r.error}` : ''}`,
     timestamp: clockTime(r.time),
     isoTimestamp: new Date(r.time).toISOString(),
     duration: cost ? `${r.latencyMs} ms, ${cost}` : `${r.latencyMs} ms`,
-    payload: { tenant: r.group, key: r.key, model: r.model, provider: r.channel, status: r.status, inputTokens: r.inputTokens, outputTokens: r.outputTokens,
+    payload: { tenant: r.tenant, key: r.key, model: r.model, provider: r.provider, status: r.status, inputTokens: r.inputTokens, outputTokens: r.outputTokens,
       latencyMs: r.latencyMs, costUSD: r.costUSD, ...(r.costNote ? { costNote: r.costNote } : {}) },
   }
 }

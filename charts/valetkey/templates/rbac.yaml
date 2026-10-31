@@ -43,7 +43,7 @@ subjects:
     name: {{ include "valetkey.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ---
-# Release namespace only: Channels, Groups and provider key Secrets.
+# Release namespace only: Providers, Tenants and provider key Secrets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -51,10 +51,10 @@ metadata:
   labels: {{- include "valetkey.labels" . | nindent 4 }}
 rules:
   - apiGroups: [valetkey.dev]
-    resources: [channels, groups]
+    resources: [providers, tenants]
     verbs: [get, list, watch, create, update, delete]
   - apiGroups: [valetkey.dev]
-    resources: [channels/status, groups/status]
+    resources: [providers/status, tenants/status]
     verbs: [get, patch, update]
   - apiGroups: ['']
     resources: [secrets]

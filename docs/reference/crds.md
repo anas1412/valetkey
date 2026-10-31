@@ -1,8 +1,8 @@
 # Custom resources
 
-All three live in the API group `valetkey.dev/v1alpha1` and report a standard `Ready` condition in their status. A Channel's condition reason is `KeyResolved`, `SecretUnavailable` or `KeyRejected` (the provider answered 401 or 403 to the key). Short names: `chan`, `grp`, `pkey`.
+All three live in the API group `valetkey.dev/v1alpha1` and report a standard `Ready` condition in their status. A Provider's condition reason is `KeyResolved`, `SecretUnavailable` or `KeyRejected` (the provider answered 401 or 403 to the key). Short names: `prov`, `tn`, `pkey`.
 
-## Channel
+## Provider
 
 A provider. Namespace: the operator namespace.
 
@@ -21,13 +21,13 @@ A provider. Namespace: the operator namespace.
 | `pricing.provider` | string | guessed from `baseURL` | Price catalogue provider (models.dev id), e.g. `deepseek` |
 | `pricing.models` | map | none | Per-model prices in dollars per million tokens: `input`, `output`, `cacheRead`, `cacheWrite`, `cacheWrite1h`. See [Budgets & costs](/guide/budgets#your-own-prices) |
 
-## Group
+## Tenant
 
 A tenant. Namespace: the operator namespace. **Its name is the tenant namespace.**
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `channelRefs` | string[] | required | Providers this tenant may use |
+| `providers` | string[] | required | Providers this tenant may use |
 | `status` | `Enabled` \| `Disabled` | `Enabled` | Disabled stops every key of the tenant |
 | `rpmRatio` | number | `1.0` | Multiplies each key's `rpm` |
 | `tpmRatio` | number | `1.0` | Multiplies each key's `tpm` |

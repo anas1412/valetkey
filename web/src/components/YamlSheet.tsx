@@ -7,8 +7,8 @@ export type YamlTarget = { resource: YamlResource; path: string[]; title: string
 
 // Where each file goes in the repository layout of the GitOps guide.
 const purpose: Record<YamlResource, (name: string) => string> = {
-  groups: (name) => `The tenant's whole file: its namespace, tenant and keys. Save it as tenants/${name}.yaml in your Git repository.`,
-  channels: (name) => `Save it as providers/${name}.yaml in your Git repository, with the provider's API key, encrypted, at the top.`,
+  tenants: (name) => `The tenant's whole file: its namespace, tenant and keys. Save it as tenants/${name}.yaml in your Git repository.`,
+  providers: (name) => `Save it as providers/${name}.yaml in your Git repository, with the provider's API key, encrypted, at the top.`,
   proxykeys: () => "One key, to paste into its tenant's file in your Git repository.",
 }
 

@@ -34,22 +34,22 @@ func TestRejectedKeyFailsOver(t *testing.T) {
 
 	reg := registry.New()
 	add := func(name, url string, prio int) {
-		reg.UpsertChannel(&types.Channel{ObjectMeta: metav1.ObjectMeta{Name: name},
-			Spec: types.ChannelSpec{Type: "openai", BaseURL: url, Priority: prio, KeySecretRef: types.SecretRef{Name: "s"}}}, "key-"+name)
+		reg.UpsertProvider(&types.Provider{ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec: types.ProviderSpec{Type: "openai", BaseURL: url, Priority: prio, KeySecretRef: types.SecretRef{Name: "s"}}}, "key-"+name)
 	}
 	add("bad", bad.URL, 100) // preferred
 	add("good", good.URL, 1)
-	reg.UpsertGroup(&types.TenantGroup{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.GroupSpec{ChannelRefs: []string{"bad", "good"}}})
+	reg.UpsertTenant(&types.Tenant{ObjectMeta: metav1.ObjectMeta{Name: "team"}, Spec: types.TenantSpec{Providers: []string{"bad", "good"}}})
 
 	var reported []string
 	rl := &Relay{Registry: reg, Limiter: NewRateLimiter(), Metrics: metrics.New(), Stats: stats.New(), Transports: NewTransports(),
-		OnKeyRejected: func(channel, reason string) {
-			reported = append(reported, channel)
-			reg.SetRejected(channel, reason) // what the controller does
+		OnKeyRejected: func(provider, reason string) {
+			reported = append(reported, provider)
+			reg.SetRejected(provider, reason) // what the controller does
 		}}
 	send := func() int {
 		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`))
-		req = req.WithContext(auth.WithRoute(req.Context(), registry.Route{Group: "team", Namespace: "team", ProxyKeyName: "app"}))
+		req = req.WithContext(auth.WithRoute(req.Context(), registry.Route{Tenant: "team", Namespace: "team", ProxyKeyName: "app"}))
 		rec := httptest.NewRecorder()
 		rl.ChatCompletions(rec, req)
 		return rec.Code

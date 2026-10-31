@@ -20,16 +20,16 @@ var fetchModels = relay.ListModels
 // discoverModels lists a provider's models before it is saved (from the Add provider form).
 func (a *API) discoverModels(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Spec    types.ChannelSpec `json:"spec"`
-		APIKey  string            `json:"apiKey"`
-		Channel string            `json:"channel"` // editing: use this channel's stored key when apiKey is empty
+		Spec     types.ProviderSpec `json:"spec"`
+		APIKey   string             `json:"apiKey"`
+		Provider string             `json:"provider"` // editing: use this provider's stored key when apiKey is empty
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
 	key := in.APIKey
-	if key == "" && in.Channel != "" {
-		if e, ok := a.Registry.Channel(in.Channel); ok {
+	if key == "" && in.Provider != "" {
+		if e, ok := a.Registry.Provider(in.Provider); ok {
 			key = e.UpstreamKey
 		}
 	}
@@ -37,7 +37,7 @@ func (a *API) discoverModels(w http.ResponseWriter, r *http.Request) {
 		writeMessage(w, 400, "paste the API key first")
 		return
 	}
-	res, err := fetchModels(r.Context(), &types.Channel{Spec: in.Spec}, key)
+	res, err := fetchModels(r.Context(), &types.Provider{Spec: in.Spec}, key)
 	if err != nil {
 		writeMessage(w, 502, err.Error())
 		return
@@ -45,28 +45,28 @@ func (a *API) discoverModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, res)
 }
 
-// groupModels lists every model a tenant's keys can use, for the key form's model picker.
-// Channels without a model list are asked for theirs.
-func (a *API) groupModels(w http.ResponseWriter, r *http.Request) {
+// tenantModels lists every model a tenant's keys can use, for the key form's model picker.
+// Providers without a model list are asked for theirs.
+func (a *API) tenantModels(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if _, ok := a.Registry.Group(name); !ok {
-		writeMessage(w, 404, "group not found")
+	if _, ok := a.Registry.Tenant(name); !ok {
+		writeMessage(w, 404, "tenant not found")
 		return
 	}
-	models := channelModels(r.Context(), a.Registry.GroupChannels(name))
+	models := providerModels(r.Context(), a.Registry.TenantProviders(name))
 	writeJSON(w, 200, map[string]any{"models": models})
 }
 
-func channelModels(ctx context.Context, channels []registry.ChannelEntry) []string {
+func providerModels(ctx context.Context, providers []registry.ProviderEntry) []string {
 	var all []string
-	for _, e := range channels {
-		ids := slices.Clone(e.Channel.Spec.Models)
+	for _, e := range providers {
+		ids := slices.Clone(e.Provider.Spec.Models)
 		if len(ids) == 0 {
-			if res, err := fetchModels(ctx, e.Channel, e.UpstreamKey); err == nil {
+			if res, err := fetchModels(ctx, e.Provider, e.UpstreamKey); err == nil {
 				ids = res.Models
 			}
 		}
-		for m := range e.Channel.Spec.ModelMapping {
+		for m := range e.Provider.Spec.ModelMapping {
 			ids = append(ids, m)
 		}
 		all = append(all, ids...)

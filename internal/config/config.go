@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	// Namespace where Channel/Group CRDs and provider Secrets live.
+	// Namespace where Provider/Tenant CRDs and provider Secrets live.
 	OperatorNamespace string
 	// URL tenants use to reach the proxy (written into tenant Secrets).
 	ProxyURL string
@@ -24,7 +24,7 @@ type Config struct {
 	// connection's address. With N, the client IP is taken from X-Forwarded-For.
 	TrustProxy string
 	// How often live prices are fetched; 0 turns fetching off (built-in prices and
-	// channel overrides only, for clusters without internet access).
+	// provider overrides only, for clusters without internet access).
 	PricingRefresh time.Duration
 	// Lease that picks the one replica that mints keys and writes status.
 	LeaseName string

@@ -38,14 +38,14 @@ type Relay struct {
 	Transports *Transports
 	Prices     *pricing.Store  // optional: no costs without it
 	Budgets    *budget.Tracker // optional: no budgets without it
-	// OnKeyRejected is told when a provider answers 401: the channel's key is bad.
-	OnKeyRejected func(channel, reason string)
+	// OnKeyRejected is told when a provider answers 401: the provider's key is bad.
+	OnKeyRejected func(provider, reason string)
 }
 
 // result is the outcome of one relayed request, for metrics and the activity log.
 type result struct {
 	status        int
-	channel       string
+	provider      string
 	model         string
 	input, output int
 	latency, ttfb time.Duration
@@ -65,7 +65,7 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 	route := auth.RouteFrom(r.Context())
 	fail := func(status int, kind, msg, model string) {
 		writeError(w, api, status, kind, msg)
-		rl.record(route, result{status: status, channel: "none", model: model, latency: time.Since(start), errorType: kind})
+		rl.record(route, result{status: status, provider: "none", model: model, latency: time.Since(start), errorType: kind})
 	}
 
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
@@ -96,24 +96,24 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 	limitKey := route.Namespace + "/" + route.ProxyKeyName
 	if route.RPM > 0 || route.TPM > 0 {
 		var rpmRatio, tpmRatio float64
-		if g, ok := rl.Registry.Group(route.Group); ok {
+		if g, ok := rl.Registry.Tenant(route.Tenant); ok {
 			rpmRatio, tpmRatio = g.Spec.RPMRatio, g.Spec.TPMRatio
 		}
 		if wait, tier := rl.Limiter.Acquire(limitKey, route.RPM, route.TPM, rpmRatio, tpmRatio); wait > 0 {
-			rl.Metrics.RateLimited.WithLabelValues(route.Group, tier).Inc()
+			rl.Metrics.RateLimited.WithLabelValues(route.Tenant, tier).Inc()
 			w.Header().Set("Retry-After", strconv.Itoa(wait))
 			fail(http.StatusTooManyRequests, "rate_limit_exceeded", strings.ToUpper(tier)+" limit reached for this key", model)
 			return
 		}
 	}
 
-	candidates := Candidates(rl.Registry, route.Group, model, api)
+	candidates := Candidates(rl.Registry, route.Tenant, model, api)
 	if len(candidates) > maxAttempts {
 		candidates = candidates[:maxAttempts]
 	}
 	if len(candidates) == 0 {
-		fail(http.StatusServiceUnavailable, "no_channel_available",
-			fmt.Sprintf("no enabled channel in group %q serves model %q", route.Group, model), model)
+		fail(http.StatusServiceUnavailable, "no_provider_available",
+			fmt.Sprintf("no enabled provider in tenant %q serves model %q", route.Tenant, model), model)
 		return
 	}
 
@@ -146,23 +146,23 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 		req, _ := http.NewRequestWithContext(r.Context(), http.MethodPost, a.url, bytes.NewReader(a.body))
 		req.Header = a.headers
 		upstreamStart := time.Now()
-		resp, err := rl.Transports.Client(entry.Channel).Do(req)
+		resp, err := rl.Transports.Client(entry.Provider).Do(req)
 		if err != nil {
 			if r.Context().Err() != nil {
 				return // client went away
 			}
-			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
+			rl.Metrics.ProviderErrors.WithLabelValues(entry.Name()).Inc()
 			lastStatus, lastType = http.StatusBadGateway, "upstream_error"
-			slog.Warn("upstream failed", "channel", entry.Name(), "key", limitKey, "err", err)
+			slog.Warn("upstream failed", "provider", entry.Name(), "key", limitKey, "err", err)
 			continue
 		}
 
-		// 401 means the channel's own key is bad, not the client's: stop sending it traffic
-		// and use the next channel. 403 can be about one model, so it only moves on.
+		// 401 means the provider's own key is bad, not the client's: stop sending it traffic
+		// and use the next provider. 403 can be about one model, so it only moves on.
 		if resp.StatusCode == http.StatusUnauthorized || (!last && resp.StatusCode == http.StatusForbidden) {
 			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
-			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
+			rl.Metrics.ProviderErrors.WithLabelValues(entry.Name()).Inc()
 			lastStatus, lastType = http.StatusBadGateway, "upstream_auth_error"
 			if resp.StatusCode == http.StatusUnauthorized && rl.OnKeyRejected != nil {
 				rl.OnKeyRejected(entry.Name(), "provider rejected the API key (HTTP 401)")
@@ -170,11 +170,11 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 			continue
 		}
 
-		// Retry rate limits and server errors on the next channel, before anything reaches the client.
+		// Retry rate limits and server errors on the next provider, before anything reaches the client.
 		if !last && (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500) {
 			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
-			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
+			rl.Metrics.ProviderErrors.WithLabelValues(entry.Name()).Inc()
 			lastStatus, lastType = resp.StatusCode, "upstream_error"
 			if resp.StatusCode == http.StatusTooManyRequests {
 				lastType = "upstream_rate_limited"
@@ -189,18 +189,18 @@ func (rl *Relay) handle(w http.ResponseWriter, r *http.Request, api API) {
 		if route.TPM > 0 {
 			rl.Limiter.RecordTokens(limitKey, usage.InputTotal()+usage.Output)
 		}
-		res := result{status: resp.StatusCode, channel: entry.Name(), model: model, input: usage.InputTotal(), output: usage.Output,
+		res := result{status: resp.StatusCode, provider: entry.Name(), model: model, input: usage.InputTotal(), output: usage.Output,
 			latency: time.Since(start), ttfb: ttfb, retries: attempt}
 		res.cost, res.costNote = cost.settle(entry, model, resp.StatusCode, usage)
 		settled = true
 		if resp.StatusCode >= 400 {
-			rl.Metrics.ChannelErrors.WithLabelValues(entry.Name()).Inc()
+			rl.Metrics.ProviderErrors.WithLabelValues(entry.Name()).Inc()
 			res.errorType = "upstream_status"
 		}
 		rl.record(route, res)
 		return
 	}
-	fail(lastStatus, lastType, "all upstream channels failed", model)
+	fail(lastStatus, lastType, "all upstream providers failed", model)
 }
 
 // forward streams (or buffers and translates) the upstream response to the client.
@@ -265,47 +265,47 @@ func forward(w http.ResponseWriter, resp *http.Response, a *adaptation) *Usage {
 
 func (rl *Relay) record(route registry.Route, r result) {
 	m := rl.Metrics
-	m.Requests.WithLabelValues(r.channel, r.model, route.Group, route.Namespace, route.ProxyKeyName, strconv.Itoa(r.status)).Inc()
+	m.Requests.WithLabelValues(r.provider, r.model, route.Tenant, route.Namespace, route.ProxyKeyName, strconv.Itoa(r.status)).Inc()
 	if r.input > 0 {
-		m.Tokens.WithLabelValues(r.channel, r.model, route.Group, "input").Add(float64(r.input))
+		m.Tokens.WithLabelValues(r.provider, r.model, route.Tenant, "input").Add(float64(r.input))
 	}
 	if r.output > 0 {
-		m.Tokens.WithLabelValues(r.channel, r.model, route.Group, "output").Add(float64(r.output))
+		m.Tokens.WithLabelValues(r.provider, r.model, route.Tenant, "output").Add(float64(r.output))
 	}
-	m.RequestDuration.WithLabelValues(r.channel, r.model).Observe(r.latency.Seconds())
+	m.RequestDuration.WithLabelValues(r.provider, r.model).Observe(r.latency.Seconds())
 	if r.ttfb > 0 {
-		m.TTFB.WithLabelValues(r.channel, r.model).Observe(r.ttfb.Seconds())
+		m.TTFB.WithLabelValues(r.provider, r.model).Observe(r.ttfb.Seconds())
 	}
 	if r.errorType != "" {
-		m.Errors.WithLabelValues(r.channel, r.model, route.Group, r.errorType).Inc()
+		m.Errors.WithLabelValues(r.provider, r.model, route.Tenant, r.errorType).Inc()
 	}
 	if r.retries > 0 {
-		m.Retries.WithLabelValues(r.channel).Add(float64(r.retries))
+		m.Retries.WithLabelValues(r.provider).Add(float64(r.retries))
 	}
 	if r.cost > 0 {
-		m.Cost.WithLabelValues(r.channel, r.model, route.Group, route.Namespace, route.ProxyKeyName).Add(r.cost.Float())
+		m.Cost.WithLabelValues(r.provider, r.model, route.Tenant, route.Namespace, route.ProxyKeyName).Add(r.cost.Float())
 	}
 	rl.Stats.RecordRequest(stats.RequestEntry{
-		Time: time.Now().UnixMilli(), Namespace: route.Namespace, Key: route.ProxyKeyName, Group: route.Group,
-		Channel: r.channel, Model: r.model, Status: r.status, InputTokens: r.input, OutputTokens: r.output,
+		Time: time.Now().UnixMilli(), Namespace: route.Namespace, Key: route.ProxyKeyName, Tenant: route.Tenant,
+		Provider: r.provider, Model: r.model, Status: r.status, InputTokens: r.input, OutputTokens: r.output,
 		LatencyMs: r.latency.Milliseconds(), Error: r.errorType, CostUSD: r.cost.Float(), CostNote: r.costNote,
 	})
 }
 
-// Models lists the models the calling key can use: its group's channel models,
+// Models lists the models the calling key can use: its tenant's provider models,
 // narrowed by the key's allowlist.
 func (rl *Relay) Models(w http.ResponseWriter, r *http.Request) {
 	route := auth.RouteFrom(r.Context())
 	seen := map[string]string{}
 	var order []string
-	for _, e := range rl.Registry.GroupChannels(route.Group) {
-		ids := slices.Clone(e.Channel.Spec.Models)
-		for m := range e.Channel.Spec.ModelMapping {
+	for _, e := range rl.Registry.TenantProviders(route.Tenant) {
+		ids := slices.Clone(e.Provider.Spec.Models)
+		for m := range e.Provider.Spec.ModelMapping {
 			ids = append(ids, m)
 		}
 		for _, id := range ids {
 			if _, ok := seen[id]; !ok && (route.Models == nil || slices.Contains(route.Models, id)) {
-				seen[id] = e.Channel.Spec.Type
+				seen[id] = e.Provider.Spec.Type
 				order = append(order, id)
 			}
 		}

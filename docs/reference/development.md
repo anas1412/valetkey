@@ -16,7 +16,7 @@ web/                 dashboard (React + EasyUI), built into web/dist and embedde
 docs/                this site (VitePress)
 charts/valetkey/     Helm chart (CRDs in crds/, Grafana dashboard in dashboards/)
 hack/                playground (demo.sh) and its fake provider
-examples/            sample Channel, Group and ProxyKey objects
+examples/            sample Provider, Tenant and ProxyKey objects
 ```
 
 ## Build and test

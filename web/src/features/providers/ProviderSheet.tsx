@@ -10,7 +10,7 @@ import { ModelPicker } from '@/components/ModelPicker'
 import { MappingEditor, toRows, fromRows, type MappingRow } from '@/components/MappingEditor'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
-import type { Channel, ChannelSpec } from '@/lib/types'
+import type { Provider, ProviderSpec } from '@/lib/types'
 import { PROVIDER_PRESETS, presetFor } from './presets'
 
 interface Draft {
@@ -27,7 +27,7 @@ interface Draft {
   skipTLSVerify: boolean
 }
 
-function toDraft(c?: Channel): Draft {
+function toDraft(c?: Provider): Draft {
   if (!c) {
     return { name: '', preset: 'openai', baseURL: PROVIDER_PRESETS[0].baseURL, apiKey: '', anyModel: true, models: [], priority: '10',
       enabled: true, mapping: [], proxyURL: '', skipTLSVerify: false }
@@ -41,15 +41,15 @@ function toDraft(c?: Channel): Draft {
   }
 }
 
-/** Add or edit a provider (Channel). A pasted API key is stored as a Kubernetes Secret and never shown again. */
-export function ProviderSheet({ open, channel, onClose, onSaved }: {
+/** Add or edit a provider (Provider). A pasted API key is stored as a Kubernetes Secret and never shown again. */
+export function ProviderSheet({ open, provider, onClose, onSaved }: {
   open: boolean
-  channel?: Channel
+  provider?: Provider
   onClose: () => void
   onSaved: () => void
 }) {
-  const editing = !!channel
-  const [d, setD] = useState<Draft>(() => toDraft(channel))
+  const editing = !!provider
+  const [d, setD] = useState<Draft>(() => toDraft(provider))
   const [available, setAvailable] = useState<string[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
   const [modelsError, setModelsError] = useState<string>()
@@ -60,12 +60,12 @@ export function ProviderSheet({ open, channel, onClose, onSaved }: {
 
   useEffect(() => {
     if (!open) return
-    const draft = toDraft(channel)
+    const draft = toDraft(provider)
     setD(draft)
     setAvailable(draft.models)
     setModelsError(undefined)
     setError(undefined)
-  }, [open, channel])
+  }, [open, provider])
 
   const preset = PROVIDER_PRESETS.find((p) => p.id === d.preset)!
   const canLoad = !!d.baseURL && (!!d.apiKey || editing)
@@ -75,7 +75,7 @@ export function ProviderSheet({ open, channel, onClose, onSaved }: {
     setModelsError(undefined)
     try {
       const spec = { type: preset.type, baseURL: d.baseURL.trim(), proxyURL: d.proxyURL || undefined, skipTLSVerify: d.skipTLSVerify || undefined }
-      const { models } = await api.discoverModels(spec, d.apiKey || undefined, editing ? channel.name : undefined)
+      const { models } = await api.discoverModels(spec, d.apiKey || undefined, editing ? provider.name : undefined)
       setAvailable([...new Set([...(models ?? []), ...d.models])].sort())
       set('anyModel', false)
     } catch (err) {
@@ -92,7 +92,7 @@ export function ProviderSheet({ open, channel, onClose, onSaved }: {
     if (!editing && !d.apiKey) return setError('Paste the provider API key')
     if (!d.baseURL) return setError('Enter the base URL')
     if (!d.anyModel && !d.models.length) return setError('Select at least one model, or allow any model')
-    const spec: ChannelSpec = {
+    const spec: ProviderSpec = {
       type: preset.type,
       baseURL: d.baseURL.trim(),
       models: d.anyModel ? [] : d.models,
@@ -101,13 +101,13 @@ export function ProviderSheet({ open, channel, onClose, onSaved }: {
       modelMapping: fromRows(d.mapping),
       proxyURL: d.proxyURL.trim() || undefined,
       skipTLSVerify: d.skipTLSVerify || undefined,
-      keySecretRef: channel?.spec.keySecretRef,
+      keySecretRef: provider?.spec.keySecretRef,
     }
     setBusy(true)
     setError(undefined)
     try {
-      if (editing) await api.updateChannel(channel.name, spec, d.apiKey || undefined)
-      else await api.createChannel(d.name.trim(), spec, d.apiKey)
+      if (editing) await api.updateProvider(provider.name, spec, d.apiKey || undefined)
+      else await api.createProvider(d.name.trim(), spec, d.apiKey)
       notify(editing ? 'Provider updated' : 'Provider added', { description: d.name })
       onSaved()
       onClose()
@@ -124,7 +124,7 @@ export function ProviderSheet({ open, channel, onClose, onSaved }: {
       <SheetContent side="right" className="sm:max-w-lg">
         <Form onSubmit={submit} className="flex flex-col h-full">
           <SheetHeader>
-            <SheetTitle>{editing ? `Edit ${channel.name}` : 'Add a provider'}</SheetTitle>
+            <SheetTitle>{editing ? `Edit ${provider.name}` : 'Add a provider'}</SheetTitle>
             <SheetDescription>Requests are forwarded here with the provider's real key. Tenants never see it.</SheetDescription>
           </SheetHeader>
 

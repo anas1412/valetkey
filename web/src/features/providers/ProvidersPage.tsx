@@ -10,27 +10,27 @@ import { YamlSheet, type YamlTarget } from '@/components/YamlSheet'
 import { usePoll } from '@/hooks/use-poll'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
-import type { Channel } from '@/lib/types'
+import type { Provider } from '@/lib/types'
 import { ProviderSheet } from './ProviderSheet'
 
-type Row = Channel & { state: string }
+type Row = Provider & { state: string }
 
-function stateOf(c: Channel): string {
+function stateOf(c: Provider): string {
   if ((c.spec.status ?? 'Enabled') !== 'Enabled') return 'disabled'
   if (c.keyRejected) return 'key-rejected'
   return c.ready ? 'ready' : 'key-missing'
 }
 
 export function ProvidersPage() {
-  const { data, error, reload } = usePoll(api.channels, 10_000)
-  const [editing, setEditing] = useState<Channel | 'new'>()
-  const [deleting, setDeleting] = useState<Channel>()
+  const { data, error, reload } = usePoll(api.providers, 10_000)
+  const [editing, setEditing] = useState<Provider | 'new'>()
+  const [deleting, setDeleting] = useState<Provider>()
   const [yaml, setYaml] = useState<YamlTarget>()
   const notify = useToast()
 
-  const test = async (c: Channel) => {
+  const test = async (c: Provider) => {
     try {
-      const r = await api.testChannel(c.name)
+      const r = await api.testProvider(c.name)
       notify(r.success ? `${c.name} works` : `${c.name} failed`, {
         description: `${r.message}${r.latencyMs ? ` · ${r.latencyMs} ms` : ''}`,
         variant: r.success ? 'success' : 'error',
@@ -81,7 +81,7 @@ export function ProvidersPage() {
           onClick={() => void test(row)}
           options={[
             { value: 'edit', label: 'Edit', icon: <Pencil className="size-3.5" />, onSelect: () => setEditing(row) },
-            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'channels', path: [row.name], title: `Provider ${row.name}` }) },
+            { value: 'yaml', label: 'View YAML', icon: <FileCode className="size-3.5" />, onSelect: () => setYaml({ resource: 'providers', path: [row.name], title: `Provider ${row.name}` }) },
             { value: 'delete', label: 'Delete', icon: <Trash2 className="size-3.5" />, onSelect: () => setDeleting(row) },
           ]}
         />
@@ -112,7 +112,7 @@ export function ProvidersPage() {
       <YamlSheet target={yaml} onClose={() => setYaml(undefined)} />
       <ProviderSheet
         open={!!editing}
-        channel={editing === 'new' ? undefined : editing}
+        provider={editing === 'new' ? undefined : editing}
         onClose={() => setEditing(undefined)}
         onSaved={reload}
       />
@@ -122,7 +122,7 @@ export function ProvidersPage() {
         description="Tenants using only this provider will stop working. A key you pasted in the dashboard is deleted with it."
         onClose={() => setDeleting(undefined)}
         onConfirm={async () => {
-          await api.deleteChannel(deleting!.name)
+          await api.deleteProvider(deleting!.name)
           notify('Provider deleted', { description: deleting!.name })
           void reload()
         }}

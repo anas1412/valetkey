@@ -26,7 +26,7 @@ function stateOf(k: ProxyKey): string {
 
 export function KeysPage() {
   const keys = usePoll(api.keys, 5000)
-  const groups = usePoll(api.groups, 30_000)
+  const tenants = usePoll(api.tenants, 30_000)
   const overview = usePoll(api.overview, 60_000)
   const [editing, setEditing] = useState<ProxyKey | 'new'>()
   const [confirm, setConfirm] = useState<{ key: ProxyKey; action: 'delete' | 'rotate' }>()
@@ -65,7 +65,7 @@ export function KeysPage() {
     },
     {
       id: 'namespace', header: 'Tenant', accessorKey: 'namespace', sortable: true, filterable: true, priority: 'low', defaultHidden: true,
-      filterOptions: (groups.data ?? []).map((g) => ({ label: g.name, value: g.name })),
+      filterOptions: (tenants.data ?? []).map((g) => ({ label: g.name, value: g.name })),
     },
     {
       id: 'state', header: 'Status', accessorKey: 'state', filterable: true, priority: 'high',
@@ -134,7 +134,7 @@ export function KeysPage() {
       <KeySheet
         open={!!editing}
         apiKey={editing === 'new' ? undefined : editing}
-        groups={groups.data ?? []}
+        tenants={tenants.data ?? []}
         onClose={() => setEditing(undefined)}
         onSaved={keys.reload}
       />

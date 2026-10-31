@@ -7,21 +7,21 @@ import { Button } from '@/components/ui/button'
 import { BudgetFields, fromBudgetDraft, toBudgetDraft, validBudgetAmount, type BudgetDraft } from '@/components/BudgetFields'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
-import type { Channel, Group } from '@/lib/types'
+import type { Provider, Tenant } from '@/lib/types'
 
 interface Draft {
   name: string
-  channels: string[]
+  providers: string[]
   rpmRatio: string
   tpmRatio: string
   budget: BudgetDraft
   enabled: boolean
 }
 
-function toDraft(g?: Group): Draft {
+function toDraft(g?: Tenant): Draft {
   return {
     name: g?.name ?? '',
-    channels: g?.spec.channelRefs ?? [],
+    providers: g?.spec.providers ?? [],
     rpmRatio: String(g?.spec.rpmRatio ?? 1),
     tpmRatio: String(g?.spec.tpmRatio ?? 1),
     budget: toBudgetDraft(g?.spec.budget),
@@ -29,17 +29,17 @@ function toDraft(g?: Group): Draft {
   }
 }
 
-/** Create or edit a tenant (Group). A tenant is a namespace; its keys live there. */
-export function TenantSheet({ open, group, channels, onClose, onSaved }: {
+/** Create or edit a tenant (Tenant). A tenant is a namespace; its keys live there. */
+export function TenantSheet({ open, tenant, providers, onClose, onSaved }: {
   open: boolean
-  group?: Group
-  channels: Channel[]
+  tenant?: Tenant
+  providers: Provider[]
   onClose: () => void
   onSaved: () => void
 }) {
-  const editing = !!group
-  const [d, setD] = useState<Draft>(() => toDraft(group))
-  const [namespaces, setNamespaces] = useState<Array<{ name: string; hasGroup: boolean }>>([])
+  const editing = !!tenant
+  const [d, setD] = useState<Draft>(() => toDraft(tenant))
+  const [namespaces, setNamespaces] = useState<Array<{ name: string; hasTenant: boolean }>>([])
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const notify = useToast()
@@ -47,21 +47,21 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
 
   useEffect(() => {
     if (!open) return
-    setD(toDraft(group))
+    setD(toDraft(tenant))
     setError(undefined)
-    if (!group) api.namespaces().then(setNamespaces).catch(() => setNamespaces([]))
-  }, [open, group])
+    if (!tenant) api.namespaces().then(setNamespaces).catch(() => setNamespaces([]))
+  }, [open, tenant])
 
-  const toggleChannel = (name: string, on: boolean) =>
-    set('channels', on ? [...d.channels, name] : d.channels.filter((c) => c !== name))
+  const toggleProvider = (name: string, on: boolean) =>
+    set('providers', on ? [...d.providers, name] : d.providers.filter((c) => c !== name))
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!d.name) return setError('Pick the namespace this tenant uses')
-    if (!d.channels.length) return setError('Pick at least one provider')
+    if (!d.providers.length) return setError('Pick at least one provider')
     if (!validBudgetAmount(d.budget.usd)) return setError('Budget must be a dollar amount, e.g. 200 or 0.50')
     const spec = {
-      channelRefs: d.channels,
+      providers: d.providers,
       status: d.enabled ? 'Enabled' as const : 'Disabled' as const,
       rpmRatio: Number(d.rpmRatio) || 1,
       tpmRatio: Number(d.tpmRatio) || 1,
@@ -70,8 +70,8 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
     setBusy(true)
     setError(undefined)
     try {
-      if (editing) await api.updateGroup(group.name, spec)
-      else await api.createGroup(d.name, spec)
+      if (editing) await api.updateTenant(tenant.name, spec)
+      else await api.createTenant(d.name, spec)
       notify(editing ? 'Tenant updated' : 'Tenant created', { description: d.name })
       onSaved()
       onClose()
@@ -83,14 +83,14 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
     }
   }
 
-  const available = namespaces.filter((n) => !n.hasGroup)
+  const available = namespaces.filter((n) => !n.hasTenant)
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="sm:max-w-lg">
         <Form onSubmit={submit} className="flex flex-col h-full">
           <SheetHeader>
-            <SheetTitle>{editing ? `Edit ${group.name}` : 'Create a tenant'}</SheetTitle>
+            <SheetTitle>{editing ? `Edit ${tenant.name}` : 'Create a tenant'}</SheetTitle>
             <SheetDescription>A tenant is a Kubernetes namespace. Its API keys can only use the providers you pick here.</SheetDescription>
           </SheetHeader>
 
@@ -121,15 +121,15 @@ export function TenantSheet({ open, group, channels, onClose, onSaved }: {
 
             <FormItem>
               <FormLabel required>Providers</FormLabel>
-              {channels.length ? (
+              {providers.length ? (
                 <div className="space-y-2.5 rounded-lg border border-border p-3">
-                  {channels.map((c) => (
+                  {providers.map((c) => (
                     <Checkbox
                       key={c.name}
                       label={c.name}
                       description={`${c.spec.type === 'anthropic' ? 'Anthropic' : 'OpenAI-compatible'}${c.spec.models?.length ? ` · ${c.spec.models.join(', ')}` : ' · any model'}`}
-                      checked={d.channels.includes(c.name)}
-                      onChange={(e) => toggleChannel(c.name, e.target.checked)}
+                      checked={d.providers.includes(c.name)}
+                      onChange={(e) => toggleProvider(c.name, e.target.checked)}
                     />
                   ))}
                 </div>

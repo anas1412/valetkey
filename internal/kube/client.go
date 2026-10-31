@@ -254,7 +254,7 @@ func (c *Client) Warn(ctx context.Context, obj ObjectRef, reason, message string
 	ev := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "v1", "kind": "Event",
 		"metadata": map[string]any{"generateName": obj.Name + ".", "namespace": obj.Namespace},
-		"involvedObject": map[string]any{"apiVersion": types.Group + "/" + types.Version, "kind": obj.Kind,
+		"involvedObject": map[string]any{"apiVersion": types.APIGroup + "/" + types.Version, "kind": obj.Kind,
 			"namespace": obj.Namespace, "name": obj.Name, "uid": obj.UID},
 		"reason": reason, "message": message, "type": "Warning", "count": int64(1),
 		"source":         map[string]any{"component": ManagedBy},

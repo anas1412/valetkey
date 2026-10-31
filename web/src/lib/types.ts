@@ -1,11 +1,11 @@
 /** Shapes returned by the operator's admin API (src/management/*). */
 
 export type EnabledStatus = 'Enabled' | 'Disabled'
-export type ChannelType = 'openai' | 'anthropic'
+export type ProviderType = 'openai' | 'anthropic'
 
-export interface ChannelSpec {
+export interface ProviderSpec {
   baseURL: string
-  type: ChannelType
+  type: ProviderType
   keySecretRef?: { name: string; key?: string }
   priority?: number
   status?: EnabledStatus
@@ -39,26 +39,26 @@ export interface Spend {
   unpriced?: number
 }
 
-export interface Channel {
+export interface Provider {
   name: string
-  spec: ChannelSpec
+  spec: ProviderSpec
   ready: boolean
   message?: string
   /** The provider answered 401/403 to the key; the provider gets no traffic. */
   keyRejected?: boolean
 }
 
-export interface GroupSpec {
+export interface TenantSpec {
   status?: EnabledStatus
-  channelRefs: string[]
+  providers: string[]
   rpmRatio?: number
   tpmRatio?: number
   budget?: Budget
 }
 
-export interface Group {
+export interface Tenant {
   name: string
-  spec: GroupSpec
+  spec: TenantSpec
   ready: boolean
   message?: string
   keys: number
@@ -118,19 +118,19 @@ export interface Overview {
   stepMinutes: number
   totals: Omit<MinuteBucket, 'minute' | 'cost'>
   series: MinuteBucket[]
-  channelShare: Record<string, number>
+  providerShare: Record<string, number>
   /** US dollars spent over the range. */
   cost: number
-  counts: { channels: number; groups: number; keys: number; activeKeys: number }
-  channels: Array<{ name: string; type: ChannelType; enabled: boolean; ready: boolean; message?: string }>
+  counts: { providers: number; tenants: number; keys: number; activeKeys: number }
+  providers: Array<{ name: string; type: ProviderType; enabled: boolean; ready: boolean; message?: string }>
 }
 
 export interface RequestEntry {
   time: number
   namespace: string
   key: string
-  group: string
-  channel: string
+  tenant: string
+  provider: string
   model: string
   status: number
   inputTokens: number
@@ -152,9 +152,10 @@ export interface PriceSource {
 
 /** What one provider model costs right now, in dollars per million tokens. */
 export interface ModelPrice {
-  channel: string
+  provider: string
   model: string
-  provider?: string
+  /** Price catalogue entry the model is priced as, e.g. deepseek. */
+  catalog?: string
   known: boolean
   source?: string
   warning?: string
@@ -182,7 +183,7 @@ export interface OperatorEvent {
   message: string
 }
 
-export interface ChannelTestResult {
+export interface ProviderTestResult {
   success: boolean
   status?: number
   latencyMs: number

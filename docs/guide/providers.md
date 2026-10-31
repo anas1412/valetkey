@@ -1,6 +1,6 @@
 # Providers
 
-A provider (Kubernetes kind: `Channel`) is one upstream LLM API plus the real API key Valetkey uses for it. Providers live in the operator namespace (`valetkey-system`), so tenants never see their keys.
+A `Provider` is one upstream LLM API plus the real API key Valetkey uses for it. Providers live in the operator namespace (`valetkey-system`), so tenants never see their keys.
 
 ## With kubectl (recommended)
 
@@ -11,7 +11,7 @@ metadata: { name: openai-key, namespace: valetkey-system }
 stringData: { apiKey: sk-YOUR_REAL_KEY }
 ---
 apiVersion: valetkey.dev/v1alpha1
-kind: Channel
+kind: Provider
 metadata: { name: openai, namespace: valetkey-system }
 spec:
   type: openai                       # or anthropic
@@ -21,7 +21,7 @@ spec:
   priority: 10
 ```
 
-See [Custom resources](/reference/crds#channel) for every field.
+See [Custom resources](/reference/crds#provider) for every field.
 
 ## In the dashboard: add a provider
 
