@@ -25,7 +25,7 @@ curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/proxykeys
 | `POST` | `/api/v1/channels` | Create: `{"name", "spec", "apiKey"}`; `apiKey` is stored in a managed Secret |
 | `GET` / `PUT` / `DELETE` | `/api/v1/channels/{name}` | Read, replace spec (optional new `apiKey`), delete |
 | `POST` | `/api/v1/channels/{name}/test` | Check the key by listing the provider's models |
-| `GET` | `/api/v1/channels/{name}/yaml` | The Channel as YAML, without status or server-managed fields |
+| `GET` | `/api/v1/channels/{name}/yaml` | The Channel as YAML, without status or server-managed fields (its key Secret is never included) |
 | `POST` | `/api/v1/models/discover` | List a provider's models before saving it: `{"spec", "apiKey"}` or `{"spec", "channel"}` |
 
 ## Tenants
@@ -36,7 +36,7 @@ curl -H "X-Valetkey-Request: 1" http://localhost:8082/api/v1/proxykeys
 | `POST` | `/api/v1/groups` | Create: `{"name", "spec"}` |
 | `GET` / `PUT` / `DELETE` | `/api/v1/groups/{name}` | Read, replace spec, delete |
 | `GET` | `/api/v1/groups/{name}/models` | Every model the tenant's keys can use |
-| `GET` | `/api/v1/groups/{name}/yaml` | The Group as YAML, without status or server-managed fields |
+| `GET` | `/api/v1/groups/{name}/yaml` | The tenant's whole file as YAML: its Namespace, Group and ProxyKeys, without status or server-managed fields |
 
 ## API keys
 

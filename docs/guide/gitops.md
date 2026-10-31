@@ -18,34 +18,24 @@ Generated keys never appear in Git. You commit "billing gets a key called invoic
 
 ## Repository layout
 
+One file per provider and one file per tenant. There are no `kustomization.yaml` files to keep up to date: Flux and Argo CD apply every YAML file under `config/`, so adding a tenant means adding a file.
+
 ```
 valetkey/
-  install/                    # Valetkey itself (Flux only, see below)
+  install/
+    valetkey.yaml             # installs Valetkey itself (Flux, see below)
   config/
-    kustomization.yaml
     providers/
-      kustomization.yaml
-      openai-key.yaml         # encrypted Secret
-      openai.yaml             # Channel
+      openai.yaml             # OpenAI's API key (encrypted) + the Channel
+      anthropic.yaml
     tenants/
-      billing/
-        kustomization.yaml
-        namespace.yaml
-        group.yaml
-        keys.yaml
-      support/
-        ...
+      billing.yaml            # Namespace + Group + the tenant's ProxyKeys
+      support.yaml
+      research.yaml
+      ...                     # one file per tenant, as many as you have
 ```
 
-```yaml
-# config/kustomization.yaml
-resources:
-  - providers
-  - tenants/billing
-  - tenants/support
-```
-
-One folder per tenant keeps each tenant's changes in their own pull requests. Don't set `namespace:` in these kustomizations: the `Group` lives in the operator namespace while its keys live in the tenant namespace, and a kustomization-wide namespace would move them all.
+Everything about one tenant is in its own file, so each tenant's changes are small pull requests that are easy to review.
 
 ## Install Valetkey
 
@@ -99,6 +89,7 @@ spec:
     repoURL: https://github.com/your-org/platform.git
     path: valetkey/config
     targetRevision: main
+    directory: { recurse: true }     # every YAML file in the folder tree
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
@@ -152,8 +143,8 @@ metadata: { name: valetkey-config, namespace: flux-system }
 spec:
   dependsOn: [{ name: valetkey-install }]
   interval: 10m
-  path: ./valetkey/config
-  prune: true
+  path: ./valetkey/config          # no kustomization.yaml needed: every YAML file below is applied
+  prune: true                       # deleting a file deletes its objects
   sourceRef: { kind: GitRepository, name: flux-system }
 ```
 
@@ -161,20 +152,13 @@ spec:
 
 Argo CD applies the chart's CRDs on every sync, and the Flux example sets `crds: CreateReplace`, so new CRD fields arrive with each upgrade. Plain `helm upgrade` doesn't do this, see [Upgrading](/reference/helm#upgrading).
 
-## Provider keys
+## Providers
 
-A `Channel` points at a Secret in the operator namespace holding the provider's real API key. Never commit that Secret in plain text. Use what your cluster already has:
+A provider is one file: its real API key, stored encrypted, then the `Channel` that points at it. This example keeps the key in a secret store such as Vault through External Secrets:
 
-::: code-group
-
-```bash [Sealed Secrets]
-kubectl create secret generic openai-key -n valetkey-system \
-  --from-literal=apiKey=sk-YOUR_REAL_KEY --dry-run=client -o yaml \
-  | kubeseal -o yaml > config/providers/openai-key.yaml
-```
-
-```yaml [External Secrets]
-# config/providers/openai-key.yaml
+```yaml
+# config/providers/openai.yaml
+# 1. The real API key, as a Secret named openai-key (never in plain text)
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata: { name: openai-key, namespace: valetkey-system }
@@ -185,23 +169,8 @@ spec:
   data:
     - secretKey: apiKey
       remoteRef: { key: llm/openai, property: apiKey }
-```
-
-```bash [SOPS (Flux)]
-kubectl create secret generic openai-key -n valetkey-system \
-  --from-literal=apiKey=sk-YOUR_REAL_KEY --dry-run=client -o yaml > config/providers/openai-key.yaml
-sops --encrypt --in-place config/providers/openai-key.yaml
-# and add `decryption: { provider: sops, secretRef: { name: sops-age } }` to the valetkey-config Kustomization
-```
-
-:::
-
-When the Secret changes, Valetkey picks up the new key within seconds, with no restart, and asks the provider whether it accepts it. A refused key shows as `KeyRejected` on the `Channel`, and that provider gets no traffic until the key is fixed (see [Providers](/guide/providers)).
-
-## Providers
-
-```yaml
-# config/providers/openai.yaml
+---
+# 2. The provider
 apiVersion: valetkey.dev/v1alpha1
 kind: Channel
 metadata:
@@ -210,49 +179,56 @@ metadata:
 spec:
   type: openai                        # also for any OpenAI-compatible API
   baseURL: https://api.openai.com
-  keySecretRef: { name: openai-key }
+  keySecretRef: { name: openai-key }  # the Secret above
   models: [gpt-4o, gpt-4o-mini]       # optional, default: any
   priority: 10
 ```
 
-## Tenants
+Without a secret store, encrypt the Secret itself and put it at the top of the same file, followed by `---` and the `Channel`:
 
-A tenant is a namespace plus a `Group` named after it. The `Group` lives in the operator namespace and says which providers the tenant may use, and optionally its budget.
+::: code-group
+
+```bash [Sealed Secrets]
+kubectl create secret generic openai-key -n valetkey-system \
+  --from-literal=apiKey=sk-YOUR_REAL_KEY --dry-run=client -o yaml \
+  | kubeseal -o yaml > config/providers/openai.yaml
+# then add a line with --- and the Channel below it
+```
+
+```bash [SOPS (Flux)]
+# write the Secret (kubectl create secret ... --dry-run=client -o yaml), ---, and the Channel
+# into config/providers/openai.yaml, then encrypt only the key values:
+sops --encrypt --encrypted-regex '^(data|stringData)$' --in-place config/providers/openai.yaml
+# and add `decryption: { provider: sops, secretRef: { name: sops-age } }` to the valetkey-config Kustomization
+```
+
+:::
+
+When the key changes, Valetkey picks it up within seconds, with no restart, and asks the provider whether it accepts it. A refused key shows as `KeyRejected` on the `Channel`, and that provider gets no traffic until the key is fixed (see [Providers](/guide/providers)).
+
+## Tenants and their keys
+
+A tenant is a namespace plus a `Group` named after it, and each app of that tenant gets a `ProxyKey` in that namespace. All of it goes in one file, separated by `---`:
 
 ```yaml
-# config/tenants/billing/namespace.yaml
+# config/tenants/billing.yaml
 apiVersion: v1
 kind: Namespace
 metadata: { name: billing }
-```
-
-```yaml
-# config/tenants/billing/group.yaml
+---
 apiVersion: valetkey.dev/v1alpha1
 kind: Group
 metadata:
   name: billing                       # the tenant namespace
-  namespace: valetkey-system
+  namespace: valetkey-system          # Groups live in the operator namespace
 spec:
-  channelRefs: [openai]
+  channelRefs: [openai]               # providers this tenant may use
   budget: { usd: "200", period: monthly }   # optional, for all the tenant's keys
-```
-
-```yaml
-# config/tenants/billing/kustomization.yaml
-resources: [namespace.yaml, group.yaml, keys.yaml]
-```
-
-## Keys
-
-One `ProxyKey` per app, in the tenant's namespace:
-
-```yaml
-# config/tenants/billing/keys.yaml
+---
 apiVersion: valetkey.dev/v1alpha1
 kind: ProxyKey
 metadata:
-  name: invoice-api
+  name: invoice-api                   # one key per app
   namespace: billing
 spec:
   models: [gpt-4o-mini]
@@ -297,15 +273,17 @@ Each of these is a pull request:
 
 | Task | Change in Git |
 |---|---|
-| Add a tenant | Add a folder under `tenants/` and list it in `config/kustomization.yaml` |
-| Give an app a key | Add a `ProxyKey` |
+| Add a tenant | Add a file under `tenants/` |
+| Remove a tenant | Delete its file; with `prune` on, its keys stop working and their Secrets are deleted |
+| Give an app a key | Add a `ProxyKey` to the tenant's file |
 | Change a key's models, limits or budget | Edit its `spec` |
 | Give temporary access | Set `expiresAt` |
 | Pause a key | `status: Disabled` |
 | Rotate a key | Set the `valetkey.dev/rotate` annotation to a new value (see below) |
 | Revoke a key | Delete the `ProxyKey`; with `prune` on, its Secret goes with it and the key stops working |
 | Pause a whole tenant | `status: Disabled` on its `Group` |
-| Add a provider or move traffic | Add a `Channel`, or change `priority` |
+| Add a provider | Add a file under `providers/` |
+| Move traffic between providers | Change `priority` |
 | Replace a provider key | Update the encrypted Secret, or the value in your secret store |
 | Upgrade Valetkey | Change the chart version |
 
@@ -358,4 +336,4 @@ Keys and tenants you disabled on purpose, and expired keys, show as Suspended ra
 
 ## The dashboard and Git
 
-The [dashboard](/guide/dashboard) writes the same objects, so it works next to Git, but Git wins: with `selfHeal` (Argo CD) or the next reconcile (Flux), a dashboard change to an object that's in Git is undone. Use the dashboard to look around and try things, then open **View YAML** on the provider, tenant or key and copy the result into your repository.
+The [dashboard](/guide/dashboard) writes the same objects, so it works next to Git, but Git wins: with `selfHeal` (Argo CD) or the next reconcile (Flux), a dashboard change to an object that's in Git is undone. Use the dashboard to look around and try things, then open **View YAML** and copy the result into your repository: on a tenant it gives the whole `tenants/<name>.yaml` file, on a provider its `Channel` for `providers/<name>.yaml`.

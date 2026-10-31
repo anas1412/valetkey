@@ -5,6 +5,13 @@ import { api, type YamlResource } from '@/lib/api'
 
 export type YamlTarget = { resource: YamlResource; path: string[]; title: string }
 
+// Where each file goes in the repository layout of the GitOps guide.
+const purpose: Record<YamlResource, (name: string) => string> = {
+  groups: (name) => `The tenant's whole file: its namespace, tenant and keys. Save it as tenants/${name}.yaml in your Git repository.`,
+  channels: (name) => `Save it as providers/${name}.yaml in your Git repository, with the provider's API key, encrypted, at the top.`,
+  proxykeys: () => "One key, to paste into its tenant's file in your Git repository.",
+}
+
 /** Shows an object as the CRD you would commit to Git or apply with kubectl. */
 export function YamlSheet({ target, onClose }: { target?: YamlTarget; onClose: () => void }) {
   const [yaml, setYaml] = useState<string>()
@@ -24,7 +31,7 @@ export function YamlSheet({ target, onClose }: { target?: YamlTarget; onClose: (
         <SheetHeader>
           <SheetTitle>{target?.title}</SheetTitle>
           <SheetDescription>
-            The live object as a CRD, ready to commit to Git or apply with kubectl. Key values are not in it: they stay in Kubernetes Secrets.
+            {target && name ? purpose[target.resource](name) : ''} Key values are never shown: they stay in Kubernetes Secrets.
           </SheetDescription>
         </SheetHeader>
         <SheetBody>

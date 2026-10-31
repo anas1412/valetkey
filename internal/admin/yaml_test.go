@@ -70,3 +70,50 @@ func TestKeyYAML(t *testing.T) {
 		t.Errorf("missing key: %d", code)
 	}
 }
+
+// A tenant's YAML is its whole file: Namespace, Group, then its keys by name.
+func TestGroupYAML(t *testing.T) {
+	obj := func(kind, ns, name string, spec map[string]any) *unstructured.Unstructured {
+		return &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "valetkey.dev/v1alpha1", "kind": kind,
+			"metadata": map[string]any{"name": name, "namespace": ns}, "spec": spec,
+			"status": map[string]any{"ready": true},
+		}}
+	}
+	dyn := dynfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(),
+		map[schema.GroupVersionResource]string{types.GroupGVR: "GroupList", types.ProxyKeyGVR: "ProxyKeyList"})
+	create := func(gvr schema.GroupVersionResource, o *unstructured.Unstructured) {
+		if _, err := dyn.Resource(gvr).Namespace(o.GetNamespace()).Create(t.Context(), o, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	create(types.GroupGVR, obj("Group", "valetkey-system", "billing", map[string]any{"channelRefs": []any{"openai"}}))
+	create(types.ProxyKeyGVR, obj("ProxyKey", "billing", "zeta-app", map[string]any{"rpm": int64(5)}))
+	create(types.ProxyKeyGVR, obj("ProxyKey", "billing", "alpha-app", map[string]any{}))
+	create(types.ProxyKeyGVR, obj("ProxyKey", "support", "helpdesk", map[string]any{}))
+
+	api := &API{Config: config.Config{OperatorNamespace: "valetkey-system"}, Kube: &kube.Client{Dynamic: dyn},
+		Registry: registry.New(), Stats: stats.New()}
+	mux := http.NewServeMux()
+	api.Register(mux)
+	req := httptest.NewRequest("GET", "http://localhost:8082/api/v1/groups/billing/yaml", nil)
+	req.Header.Set("X-Valetkey-Request", "1")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	out := rec.Body.String()
+	docs := strings.Split(out, "---\n")
+	if len(docs) != 4 {
+		t.Fatalf("want Namespace, Group and 2 keys, got %d documents:\n%s", len(docs), out)
+	}
+	for i, want := range []string{"kind: Namespace", "kind: Group", "name: alpha-app", "name: zeta-app"} {
+		if !strings.Contains(docs[i], want) {
+			t.Errorf("document %d should contain %q:\n%s", i, want, docs[i])
+		}
+	}
+	if strings.Contains(out, "helpdesk") || strings.Contains(out, "status") {
+		t.Errorf("other tenants' keys and status must be left out:\n%s", out)
+	}
+}

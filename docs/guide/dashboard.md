@@ -62,4 +62,10 @@ The last 500 requests (metadata only, never prompts or responses), admin changes
 
 ## View YAML
 
-Every provider, tenant and key has **View YAML** in its row menu. It shows the live object as a CRD, without status or fields the API server manages, with a Copy button. Use it to move what you set up in the dashboard into your GitOps repo, or to see which CRD field a form field sets. Key values are never in it: they stay in Kubernetes Secrets.
+Every provider, tenant and key has **View YAML** in its row menu, with a Copy button. It shows the live objects as you'd commit them, without status or fields the API server manages, laid out like the [GitOps guide](/guide/gitops#repository-layout):
+
+- **A tenant** gives its whole file: the namespace, the tenant (`Group`) and all its keys, to save as `tenants/<name>.yaml`.
+- **A provider** gives its `Channel`, to save as `providers/<name>.yaml`. Its API key isn't shown; add the key there yourself, encrypted.
+- **A key** gives one `ProxyKey`, to paste into its tenant's file.
+
+Use it to move what you set up in the dashboard into Git, or to see which field a form setting changes. Key values are never in it: they stay in Kubernetes Secrets.
