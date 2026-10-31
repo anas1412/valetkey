@@ -1,18 +1,28 @@
-# Dashboard tour
+# Dashboard (optional)
 
-The dashboard is built into LLMP and served on the internal admin port. Open it with:
+LLMP is configured with [custom resources](/guide/kubectl); the dashboard is an optional web view on top of them. It shows usage and activity, and can create and edit the same objects you'd write in YAML.
+
+## Open it
+
+The dashboard only listens inside the pod (on `127.0.0.1:8082`), so there's no Service, no Ingress and no password. You reach it with a port-forward, which your Kubernetes RBAC controls:
 
 ```bash
-kubectl port-forward -n llmproxy-system svc/llmproxy-admin 8081:8081
+kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082
 ```
+
+Then open <http://localhost:8082>. Or let the CLI do it: `llmproxyctl dashboard`.
 
 It follows your system's light or dark setting and works on phones.
 
 <Walkthrough />
 
+::: tip Using GitOps?
+Changes made in the dashboard are real objects in the cluster, so your GitOps tool will revert them on its next sync if the same objects are in Git. Use the dashboard to look and Git to change, or pick one owner per object.
+:::
+
 ## Overview
 
-Requests, tokens, error rate and active keys for the last 24 hours, a requests chart (1 h / 6 h / 24 h), the share of traffic per provider, and whether every provider's key could be read. On a fresh install it shows the three setup steps instead.
+Requests, tokens, error rate and active keys for the last 24 hours, a requests chart (1 h / 6 h / 24 h), the share of traffic per provider, and whether every provider's key could be read.
 
 <Shot name="overview" alt="Overview with traffic chart and provider share" />
 
@@ -22,7 +32,7 @@ History is kept in memory and resets when the pod restarts. For long-term data, 
 
 ## Providers
 
-Every upstream API, its models, priority and status. **Test** checks that the provider accepts the key (it lists the provider's models; no prompt is sent).
+Every upstream API, its models, priority and status. **Test** checks that the provider accepts the key (it lists the provider's models; no prompt is sent). **Add provider** lets you paste a key and tick models from the provider's own list.
 
 <Shot name="providers" alt="Providers list" />
 

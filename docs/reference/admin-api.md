@@ -1,21 +1,13 @@
 # Admin API
 
-The dashboard uses this API; you can script it too. It's served on the admin port (8081) only.
+The dashboard and [`llmproxyctl`](/guide/cli) use this API; you can script it too. It listens on `127.0.0.1:8082` inside the pod, so you reach it through a port-forward. There's no password: access is controlled by who may port-forward to the pod (Kubernetes RBAC).
 
-Authenticate with the dashboard's session cookie or `Authorization: Bearer <ADMIN_KEY>`. Errors are JSON: `{"message": "…"}`.
+Every request needs the header `X-LLMP-Request: 1` and must target `localhost` (see [Security](/guide/security#the-admin-api-without-a-password)). Errors are JSON: `{"message": "…"}`.
 
 ```bash
-kubectl port-forward -n llmproxy-system svc/llmproxy-admin 8081:8081 &
-curl -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8081/api/v1/status
+kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+curl -H "X-LLMP-Request: 1" http://localhost:8082/api/v1/status
 ```
-
-## Session
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/session` | Sign in: `{"key": "…"}`. Sets the session cookie. Locked for 15 min after 5 failures per IP |
-| `GET` | `/api/v1/session` | Check the session |
-| `DELETE` | `/api/v1/session` | Sign out (revokes the session) |
 
 ## Overview
 
@@ -56,13 +48,3 @@ curl -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8081/api/v1/status
 | `POST` | `/api/v1/proxykeys/{ns}/{name}/rotate` | Issue a new key; the old one stops working (audited) |
 
 Every write is recorded in the [audit trail](/guide/security#audit-trail).
-
-## CLI
-
-[`scripts/llmproxyctl`](https://github.com/anas1412/llmp/blob/main/scripts/llmproxyctl) wraps a few read calls (needs bash, curl and jq):
-
-```bash
-export LLMPROXY_ADMIN_KEY=...
-./scripts/llmproxyctl status
-./scripts/llmproxyctl test channel openai
-```

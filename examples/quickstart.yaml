@@ -1,0 +1,75 @@
+# A complete example: two providers, one tenant ("billing"), two keys.
+# kubectl create namespace billing && kubectl apply -f examples/quickstart.yaml
+#
+# 1. Provider API keys (operator namespace only)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openai-key
+  namespace: llmproxy-system
+stringData:
+  apiKey: sk-REPLACE_ME
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: anthropic-key
+  namespace: llmproxy-system
+stringData:
+  apiKey: sk-ant-REPLACE_ME
+---
+# 2. Providers
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Channel
+metadata:
+  name: openai
+  namespace: llmproxy-system
+spec:
+  type: openai
+  baseURL: https://api.openai.com
+  keySecretRef: { name: openai-key }
+  models: [gpt-4o, gpt-4o-mini]
+  priority: 10
+---
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Channel
+metadata:
+  name: anthropic
+  namespace: llmproxy-system
+spec:
+  type: anthropic
+  baseURL: https://api.anthropic.com
+  keySecretRef: { name: anthropic-key }
+  models: [claude-sonnet-4-5, claude-haiku-4-5]
+  priority: 20
+---
+# 3. Tenant: its name is the tenant namespace
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Group
+metadata:
+  name: billing
+  namespace: llmproxy-system
+spec:
+  channelRefs: [openai, anthropic]
+  rpmRatio: 1.0
+  tpmRatio: 1.0
+---
+# 4. Keys in the tenant namespace; LLMP writes each key to the Secret <name>-llmproxy
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: ProxyKey
+metadata:
+  name: invoice-api
+  namespace: billing
+spec:
+  models: [gpt-4o-mini]
+  subnets: [10.0.0.0/8]
+  rpm: 60        # requests per minute (× tenant rpmRatio); omit for unlimited
+  tpm: 100000    # tokens per minute (× tenant tpmRatio)
+---
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: ProxyKey
+metadata:
+  name: support-assistant
+  namespace: billing
+spec:
+  models: [claude-haiku-4-5]

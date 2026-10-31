@@ -46,4 +46,4 @@ Status fields: `ready`, `message`, `conditions`, `secretName`, and `keyHash` (SH
 
 ## Full example
 
-See [`deploy/examples.yaml`](https://github.com/anas1412/llmp/blob/main/deploy/examples.yaml).
+See [`examples/quickstart.yaml`](https://github.com/anas1412/llmp/blob/main/examples/quickstart.yaml): two providers, one tenant, two keys.

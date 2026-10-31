@@ -3,7 +3,6 @@ import { LayoutDashboard, Server, Users, KeyRound, Activity, Menu } from 'lucide
 import { Sidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/Logo'
-import { AccountRow } from './SidebarFooter'
 import { SidebarLogo } from './SidebarLogo'
 import type { Route } from '@/hooks/use-hash-route'
 
@@ -24,10 +23,9 @@ const SECTIONS = [
   },
 ]
 
-export function AppShell({ route, onNavigate, onSignOut, children }: {
+export function AppShell({ route, onNavigate, children }: {
   route: Route
   onNavigate: (r: Route) => void
-  onSignOut: () => void
   children: ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -42,7 +40,6 @@ export function AppShell({ route, onNavigate, onSignOut, children }: {
           mobileOpen={mobileOpen}
           onMobileOpenChange={setMobileOpen}
           header={<SidebarLogo />}
-          footer={<AccountRow onSignOut={onSignOut} />}
           togglePlacement="header"
         />
       </div>

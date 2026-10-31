@@ -1,0 +1,40 @@
+image:
+  repository: ghcr.io/anas1412/llmp
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# URL written into tenant key Secrets and shown in the dashboard's examples.
+# Defaults to http://<release>.<namespace>.svc.cluster.local:8000
+proxyURL: ""
+
+# Number of reverse proxies (ingress, load balancer) in front of LLMP. With N > 0
+# the client IP used for allow lists is read from X-Forwarded-For.
+trustProxy: 0
+
+service:
+  type: ClusterIP
+  proxyPort: 8000
+  metricsPort: 8081
+
+resources:
+  requests: { cpu: 20m, memory: 32Mi }
+  limits: { memory: 256Mi }
+
+# Only allow other namespaces to reach the proxy port; metrics only from namespaces
+# carrying the label below (e.g. your monitoring namespace).
+networkPolicy:
+  enabled: false
+  metricsNamespaceLabel:
+    llmproxy.llmproxy.io/metrics: "true"
+
+# Prometheus Operator ServiceMonitor for /metrics.
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  labels: {}
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

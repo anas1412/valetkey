@@ -55,14 +55,3 @@ export async function launch({ chrome = process.env.CHROME ?? 'chromium', width 
     },
   }
 }
-
-/** Signs in to the admin API and returns the session cookie as { name, value }. */
-export async function adminCookie(base, adminKey) {
-  const res = await fetch(`${base}/api/v1/session`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: adminKey }),
-  })
-  const cookie = res.headers.get('set-cookie')?.split(';')[0]
-  if (!cookie) throw new Error(`sign-in failed: HTTP ${res.status}`)
-  const [name, value] = cookie.split('=')
-  return { name, value }
-}

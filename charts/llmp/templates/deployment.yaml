@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "llmp.fullname" . }}
+  labels: {{- include "llmp.labels" . | nindent 4 }}
+spec:
+  # Keep at 1: the reconciler has no leader election, and rate limits / dashboard history are in memory.
+  replicas: 1
+  selector:
+    matchLabels: {{- include "llmp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "llmp.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "llmp.fullname" . }}
+      terminationGracePeriodSeconds: 60   # lets in-flight streams finish on shutdown
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532                  # distroless "nonroot"
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: llmp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef: { fieldPath: metadata.namespace }
+            - name: PROXY_URL
+              value: {{ .Values.proxyURL | default (printf "http://%s.%s.svc.cluster.local:%v" (include "llmp.fullname" .) .Release.Namespace .Values.service.proxyPort) | quote }}
+            {{- if .Values.trustProxy }}
+            - name: TRUST_PROXY
+              value: {{ .Values.trustProxy | quote }}
+            {{- end }}
+          ports:
+            - { containerPort: 8000, name: proxy }
+            - { containerPort: 8081, name: metrics }
+            # The dashboard and admin API listen on 127.0.0.1:8082 inside the pod:
+            # reachable only with `kubectl port-forward`, never through a Service.
+          readinessProbe:
+            httpGet: { path: /readyz, port: metrics }
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

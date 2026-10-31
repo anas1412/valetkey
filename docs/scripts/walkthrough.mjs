@@ -1,7 +1,8 @@
-// Records a walkthrough video of the dashboard: sign in → add a provider and pick
+// Records a walkthrough video of the dashboard: overview → add a provider and pick
 // its models → create an API key → copy it → activity. Needs ffmpeg and Chromium.
 //
-//   ADMIN_KEY=... CHROME=/usr/bin/chromium node docs/scripts/walkthrough.mjs [http://localhost:8081]
+//   kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+//   CHROME=/usr/bin/chromium node docs/scripts/walkthrough.mjs [http://localhost:8082]
 //
 // Writes docs/public/walkthrough.mp4 (H.264, 1440×900) and a poster image.
 // Expects a tenant "research" and a provider serving an OpenAI-compatible /v1/models at PROVIDER_URL.
@@ -12,10 +13,8 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { launch, sleep } from './cdp.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:8081'
-const adminKey = process.env.ADMIN_KEY
+const base = process.argv[2] ?? 'http://localhost:8082'
 const providerURL = process.env.PROVIDER_URL ?? 'http://127.0.0.1:9101'
-if (!adminKey) throw new Error('set ADMIN_KEY')
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 mkdirSync(out, { recursive: true })
 
@@ -61,10 +60,8 @@ window.__demo = (() => {
 })();`
 
 const steps = [
-  // Sign in
-  [1500, `__demo.type(document.querySelector('input[type=password]'), ${JSON.stringify(adminKey.slice(0, 20))})`],
-  [400, `(() => { const i = document.querySelector('input[type=password]'); const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; s.call(i, ${JSON.stringify(adminKey)}); i.dispatchEvent(new Event('input',{bubbles:true})); })()`],
-  [3500, `__demo.click(__demo.byText('button', 'Sign in'))`],
+  // Overview
+  [3000, `__demo.moveTo(__demo.byText('nav button, nav a, aside button', 'Overview'))`],
   // Add a provider and pick its models from the provider's own list
   [2500, `__demo.click(__demo.byText('nav button, nav a, aside button', 'Providers'))`],
   [1500, `__demo.click(__demo.byText('button', 'Add provider'))`],

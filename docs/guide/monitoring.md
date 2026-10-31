@@ -6,7 +6,7 @@ The [Overview](/guide/dashboard#overview) and [Activity](/guide/dashboard#activi
 
 ## Prometheus metrics
 
-Scrape `http://llmproxy-admin.llmproxy-system:8081/metrics`:
+Scrape `http://llmproxy.llmproxy-system:8081/metrics`, or enable the chart's `serviceMonitor` if you use the Prometheus Operator:
 
 | Metric | Type | Labels |
 |---|---|---|

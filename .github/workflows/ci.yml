@@ -19,38 +19,62 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: azure/setup-helm@v4
       # The binary embeds the dashboard, so build it first.
       - run: npm ci && npm run build
         working-directory: web
       - run: go vet ./...
       - run: go test -race ./...
+      - run: helm lint charts/llmp
+      - run: bash -n scripts/llmproxyctl
 
-  image:
+  # On a v* tag: container image, Helm chart (OCI) and a GitHub release.
+  release:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+
+      - uses: azure/setup-helm@v4
+      - name: Push the Helm chart
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package charts/llmp --version "$VERSION" --app-version "$VERSION"
+          helm push "llmp-$VERSION.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+          # Plain manifests for clusters without Helm.
+          helm template llmproxy charts/llmp --namespace llmproxy-system --include-crds \
+            --set image.tag="$VERSION" > llmp.yaml
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "llmp-$VERSION.tgz" llmp.yaml \
+            --title "LLMP $VERSION" --generate-notes \
+            --notes "$(printf 'Image: `ghcr.io/%s:%s`\n\nHelm:\n```\nhelm install llmproxy oci://ghcr.io/%s/charts/llmp --version %s -n llmproxy-system --create-namespace\n```\n\nWithout Helm: `kubectl apply -f llmp.yaml` (namespace llmproxy-system must exist).' \
+              "$GITHUB_REPOSITORY" "$VERSION" "$GITHUB_REPOSITORY_OWNER" "$VERSION")"

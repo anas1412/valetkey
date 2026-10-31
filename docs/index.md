@@ -33,11 +33,11 @@ features:
     title: Built-in dashboard
     details: Add providers by pasting a key and ticking models, create keys with copy-paste snippets, watch usage and activity live.
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>'
-    title: Audited admin access
-    details: Sign-in lockout, revocable sessions, strict browser headers, and every admin change in the activity log and pod log.
+    title: Access through Kubernetes RBAC
+    details: No passwords to manage. Kubernetes RBAC decides who can change what, and every change lands in the Kubernetes audit log.
   - icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z"/><path d="M16 8 2 22"/><path d="M17.488 15H9"/></svg>'
     title: Tiny and boring to run
     details: One 32 MB distroless image, ~15 MB of memory, no database, no Redis. State lives in CRDs and Secrets.
 ---
 
-<Walkthrough caption="A 78-second tour: sign in, add a provider and pick its models, create a key, copy it, see it in the activity log." />
+<Walkthrough caption="The optional dashboard, through kubectl port-forward: add a provider and pick its models, create a key, copy it, see it in the activity log." />

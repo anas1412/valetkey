@@ -1,41 +1,56 @@
 # Security & audit trail
 
-## Two ports, two audiences
+## Who can do what
 
-| Port | Service | Serves | Who should reach it |
-|---|---|---|---|
-| 8000 | `llmproxy` | `/v1/*` only | Your apps |
-| 8081 | `llmproxy-admin` | dashboard, admin API, `/healthz`, `/readyz`, `/metrics` | Admins (port-forward) and Prometheus |
+LLMP doesn't have its own users or passwords. Everything is decided by Kubernetes RBAC:
 
-Nothing admin-related is reachable on 8000. Keep 8081 private: use `kubectl port-forward`, and optionally apply [`deploy/networkpolicy.yaml`](https://github.com/anas1412/llmp/blob/main/deploy/networkpolicy.yaml) so only namespaces you label (e.g. monitoring) can connect. If you expose the dashboard through an Ingress, use TLS and a strong admin key.
+| To… | You need |
+|---|---|
+| Add or change providers and tenants | write access to `channels` / `groups` in the LLMP namespace |
+| Issue, change or revoke keys | write access to `proxykeys` in the tenant's namespace |
+| Read a tenant's key | read access to Secrets in the tenant's namespace |
+| Use the dashboard, admin API or `llmproxyctl` | `pods/portforward` on the LLMP pod |
+| Call an LLM | a virtual key |
 
-## Admin sign-in
+So the usual tools apply: grant roles to groups from your cluster's sign-in, and the Kubernetes audit log records who changed what and who opened a port-forward.
 
-- The admin key comes from the `llmproxy-admin` Secret. Without it the dashboard and admin API are off.
-- After **5 wrong keys** from one IP, sign-in is locked for **15 minutes**.
-- Sessions last **8 hours**. **Sign out** revokes the session on the server, and changing `ADMIN_KEY` ends every session.
-- Scripts can call the admin API with `Authorization: Bearer <ADMIN_KEY>`.
+## Two network ports, one local port
+
+| Port | Reachable from | Serves |
+|---|---|---|
+| 8000 | the cluster (Service `llmproxy`) | `/v1/*` only: your apps' LLM calls |
+| 8081 | the cluster (Service `llmproxy`) | `/healthz`, `/readyz`, `/metrics` |
+| 8082 | **inside the pod only** (`127.0.0.1`) | dashboard and admin API, via `kubectl port-forward` |
+
+Nothing admin-related is reachable over the network. To also restrict who can reach 8000 and 8081, enable the chart's [network policy](/reference/helm).
+
+## The admin API without a password
+
+Because the admin API trusts anyone who can port-forward, it also has to make sure a request really comes from you and not from a web page you happen to have open while the port-forward runs:
+
+- it only answers when the address is `localhost`, `127.0.0.1` or `[::1]`, which blocks DNS-rebinding pages;
+- every request must carry an `X-LLMP-Request` header, which other websites can't add, which blocks cross-site requests.
+
+The dashboard and `llmproxyctl` send the header for you. Scripts using `curl` add `-H "X-LLMP-Request: 1"`.
 
 ## Audit trail
 
-Every admin change is recorded: creating, editing or deleting a provider, tenant or key, revealing a key, rotating a key, and every sign-in (successful or failed). You can see them in the dashboard under **Activity → Admin**, and they're written to the pod log as JSON:
+Admin changes made through the dashboard or admin API are recorded: creating, editing or deleting a provider, tenant or key, revealing a key and rotating a key. They show under **Activity → Admin** in the dashboard and are written to the pod log as JSON:
 
 ```json
-{"level":"INFO","msg":"admin action","action":"rotated key research/notebook","via":"dashboard","ip":"10.244.0.1"}
+{"level":"INFO","msg":"admin action","action":"rotated key billing/invoice-api"}
 ```
 
-The dashboard view resets when the pod restarts; your log pipeline keeps the pod log.
-
-<Shot name="activity" alt="Activity with admin events" />
+Who did it is in the Kubernetes audit log (the user that opened the port-forward). Changes made with `kubectl` or GitOps are in the Kubernetes audit log directly.
 
 ## What's stored where
 
-- **Provider keys**: Kubernetes Secrets in the operator namespace.
+- **Provider keys**: Kubernetes Secrets in the LLMP namespace.
 - **Virtual keys**: a Secret per key in the tenant's namespace; only a SHA-256 hash is kept in the key's status.
 - **Request log**: metadata only (time, key, model, status, tokens, latency). Prompts and responses are never stored or logged.
 
 ## Hardening built in
 
 - Runs as a non-root user, read-only filesystem, all Linux capabilities dropped, on a distroless image with no shell.
-- The admin port sends a strict Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff` and `no-referrer`; the session cookie is `HttpOnly` and `SameSite=Strict`.
+- The dashboard sends a strict Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff` and `no-referrer`.
 - Only a short list of client headers is forwarded to providers; cookies, auth headers and `X-Forwarded-*` are dropped.

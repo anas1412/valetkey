@@ -2,7 +2,28 @@
 
 A provider (Kubernetes kind: `Channel`) is one upstream LLM API plus the real API key LLMP uses for it. Providers live in the operator namespace (`llmproxy-system`), so tenants never see their keys.
 
-## Add a provider in the dashboard
+## With kubectl (recommended)
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata: { name: openai-key, namespace: llmproxy-system }
+stringData: { apiKey: sk-YOUR_REAL_KEY }
+---
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Channel
+metadata: { name: openai, namespace: llmproxy-system }
+spec:
+  type: openai                       # or anthropic
+  baseURL: https://api.openai.com
+  keySecretRef: { name: openai-key } # key defaults to "apiKey"
+  models: [gpt-4o, gpt-4o-mini]      # omit to allow any model
+  priority: 10
+```
+
+See [Custom resources](/reference/crds#channel) for every field.
+
+## In the dashboard: add a provider
 
 Open **Providers → Add provider**.
 
@@ -30,24 +51,3 @@ If a provider answers 429 (rate limited), a 5xx error, or doesn't answer at all,
 
 - Apps using the **OpenAI** API can be routed to an **Anthropic** provider: requests, responses and streaming are translated, including tools, images and system prompts.
 - Apps using the **Anthropic** API (`/v1/messages`) are passed through unchanged to Anthropic providers.
-
-## With kubectl
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata: { name: openai-key, namespace: llmproxy-system }
-stringData: { apiKey: sk-YOUR_REAL_KEY }
----
-apiVersion: llmproxy.llmproxy.io/v1alpha1
-kind: Channel
-metadata: { name: openai, namespace: llmproxy-system }
-spec:
-  type: openai                       # or anthropic
-  baseURL: https://api.openai.com
-  keySecretRef: { name: openai-key } # key defaults to "apiKey"
-  models: [gpt-4o, gpt-4o-mini]      # omit to allow any model
-  priority: 10
-```
-
-See [Custom resources](/reference/crds#channel) for every field.

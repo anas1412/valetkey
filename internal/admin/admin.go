@@ -4,19 +4,16 @@
 package admin
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"regexp"
-	"strconv"
-	"time"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/anas1412/llmp/internal/auth"
 	"github.com/anas1412/llmp/internal/config"
 	"github.com/anas1412/llmp/internal/kube"
 	"github.com/anas1412/llmp/internal/reconciler"
@@ -30,15 +27,10 @@ type API struct {
 	Registry   *registry.Registry
 	Controller *reconciler.Controller
 	Stats      *stats.Stats
-	Sessions   *auth.Sessions
 }
 
 // Register mounts every /api/v1 route on mux.
 func (a *API) Register(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/v1/session", a.login)
-	mux.HandleFunc("DELETE /api/v1/session", a.logout)
-	mux.Handle("GET /api/v1/session", a.guard(func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) }))
-
 	mux.Handle("GET /api/v1/overview", a.guard(a.overview))
 	mux.Handle("GET /api/v1/activity", a.guard(a.activity))
 	mux.Handle("GET /api/v1/status", a.guard(a.status))
@@ -68,61 +60,41 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/proxykeys/{ns}/{name}/rotate", a.guard(a.rotateKey))
 }
 
-type viaKey struct{}
-
+// guard admits only requests a local browser or llmproxyctl would send. The admin
+// API has no password: it listens on the pod's loopback, so reaching it at all takes
+// `kubectl port-forward` (Kubernetes RBAC). These checks stop other websites from
+// using an admin's open port-forward:
+//   - Host must be localhost: blocks DNS-rebinding pages.
+//   - X-LLMP-Request must be set: a cross-site page can't add a custom header
+//     without a CORS preflight, which this API never grants.
 func (a *API) guard(h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if a.Sessions.AdminKey == "" {
-			writeMessage(w, http.StatusServiceUnavailable, "admin API disabled: ADMIN_KEY is not set")
+		if !LocalHost(r.Host) {
+			writeMessage(w, http.StatusForbidden, "the admin API only answers on localhost (use kubectl port-forward)")
 			return
 		}
-		ok, via := a.Sessions.Authorized(r)
-		if !ok {
-			writeMessage(w, http.StatusUnauthorized, "admin authentication required")
+		if r.Header.Get("X-LLMP-Request") == "" {
+			writeMessage(w, http.StatusForbidden, "missing X-LLMP-Request header")
 			return
 		}
-		h(w, r.WithContext(context.WithValue(r.Context(), viaKey{}, via)))
+		h(w, r)
 	})
 }
 
-// audit records an admin change in the activity log and the pod log (which outlives restarts).
-func (a *API) audit(r *http.Request, action string) {
-	via, _ := r.Context().Value(viaKey{}).(string)
-	ip := auth.ClientIP(r, 0)
-	slog.Info("admin action", "action", action, "via", via, "ip", ip)
-	a.Stats.Event("info", "admin", fmt.Sprintf("%s (via %s from %s)", action, via, ip))
+// LocalHost reports whether a Host header names this machine (any port).
+func LocalHost(host string) bool {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
-func (a *API) login(w http.ResponseWriter, r *http.Request) {
-	if a.Sessions.AdminKey == "" {
-		writeMessage(w, http.StatusServiceUnavailable, "admin API disabled: ADMIN_KEY is not set")
-		return
-	}
-	ip := auth.ClientIP(r, 0)
-	if wait := a.Sessions.LockedOut(ip); wait > 0 {
-		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
-		writeMessage(w, http.StatusTooManyRequests, fmt.Sprintf("too many wrong keys, try again in %d min", int(wait.Minutes())+1))
-		return
-	}
-	var body struct{ Key string }
-	if !readJSON(w, r, &body) {
-		return
-	}
-	if !a.Sessions.Login(w, r, body.Key, ip) {
-		slog.Warn("admin sign-in failed", "ip", ip)
-		a.Stats.Event("warn", "admin", "failed dashboard sign-in from "+ip)
-		time.Sleep(500 * time.Millisecond) // slow down guessing
-		writeMessage(w, http.StatusUnauthorized, "wrong admin key")
-		return
-	}
-	slog.Info("admin signed in", "ip", ip)
-	a.Stats.Event("info", "admin", "dashboard sign-in from "+ip)
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (a *API) logout(w http.ResponseWriter, r *http.Request) {
-	a.Sessions.Logout(w, r)
-	w.WriteHeader(http.StatusNoContent)
+// audit records an admin change in the activity log and the pod log (which outlives
+// restarts). Who made it is in the Kubernetes audit log, as the port-forward's user.
+func (a *API) audit(_ *http.Request, action string) {
+	slog.Info("admin action", "action", action)
+	a.Stats.Event("info", "admin", action)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

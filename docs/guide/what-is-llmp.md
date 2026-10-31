@@ -15,7 +15,7 @@ Tenant app ──POST /v1/chat/completions──▶ LLMP ──▶ OpenAI / Anth
 
 - **Provider keys stay secret.** Tenants only ever see their own `sk-proxy-…` key. Rotating or revoking one tenant's access never touches the provider.
 - **One place for rules.** Which models a key may use, from which IP ranges, and how many requests or tokens per minute.
-- **No new infrastructure.** No database, no Redis, no SaaS. Everything is a Kubernetes object, so GitOps, RBAC and backups work as they already do.
+- **No new infrastructure.** No database, no Redis, no SaaS, no passwords. Everything is a Kubernetes object, so GitOps, RBAC, audit logs and backups work as they already do.
 - **Works with every SDK.** It speaks the OpenAI Chat Completions API and the Anthropic Messages API, so existing clients only change their base URL and key.
 
 ## The three building blocks
@@ -26,7 +26,7 @@ Tenant app ──POST /v1/chat/completions──▶ LLMP ──▶ OpenAI / Anth
 | **Tenant** (`Group`) | You | A namespace allowed to use some providers, with optional limit multipliers. |
 | **API key** (`ProxyKey`) | You or the tenant | A virtual key in the tenant's namespace, with its own rules. LLMP writes the key into a Secret next to it. |
 
-You can manage all three from the [dashboard](/guide/dashboard) or with `kubectl`. They are the same objects.
+You manage all three as YAML with [`kubectl` or GitOps](/guide/kubectl), check on them with [`llmproxyctl`](/guide/cli), and optionally look at them in the [dashboard](/guide/dashboard).
 
 ## What it is not
 

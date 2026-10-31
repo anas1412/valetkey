@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/anas1412/llmp/internal/admin"
-	"github.com/anas1412/llmp/internal/auth"
 	"github.com/anas1412/llmp/internal/config"
 	"github.com/anas1412/llmp/internal/kube"
 	"github.com/anas1412/llmp/internal/metrics"
@@ -47,14 +46,12 @@ func run() error {
 	reg, m, st := registry.New(), metrics.New(), stats.New()
 	ctrl := reconciler.New(cfg, kc, reg, m, st)
 	rl := &relay.Relay{Registry: reg, Limiter: relay.NewRateLimiter(), Metrics: m, Stats: st, Transports: relay.NewTransports()}
-	api := &admin.API{Config: cfg, Kube: kc, Registry: reg, Controller: ctrl, Stats: st, Sessions: auth.NewSessions(cfg.AdminKey)}
+	api := &admin.API{Config: cfg, Kube: kc, Registry: reg, Controller: ctrl, Stats: st}
 
-	if cfg.AdminKey == "" {
-		slog.Warn("ADMIN_KEY is not set: admin API and dashboard are disabled")
-	}
 	servers := []*http.Server{
 		{Addr: cfg.ProxyAddr, Handler: server.Proxy(rl, reg, cfg.TrustProxy), ReadHeaderTimeout: 10 * time.Second},
-		{Addr: cfg.AdminAddr, Handler: server.Admin(api, m, reg, ctrl.Ready, web.Dist()), ReadHeaderTimeout: 10 * time.Second},
+		{Addr: cfg.MetricsAddr, Handler: server.Metrics(m, reg, ctrl.Ready), ReadHeaderTimeout: 10 * time.Second},
+		{Addr: cfg.AdminAddr, Handler: server.Admin(api, web.Dist()), ReadHeaderTimeout: 10 * time.Second},
 	}
 	errc := make(chan error, len(servers)+1)
 	for _, s := range servers {

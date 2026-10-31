@@ -1,15 +1,15 @@
 // Captures dashboard screenshots for the docs with a local Chromium.
 //
-//   ADMIN_KEY=... CHROME=/usr/bin/chromium node docs/scripts/screenshots.mjs [http://localhost:8081]
+//   kubectl port-forward -n llmproxy-system deploy/llmproxy 8082:8082 &
+//   CHROME=/usr/bin/chromium node docs/scripts/screenshots.mjs [http://localhost:8082]
 //
 // Writes docs/public/screenshots/<page>-<theme>.png at 1440×900.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { launch, adminCookie, sleep } from './cdp.mjs'
+import { launch, sleep } from './cdp.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:8081'
-if (!process.env.ADMIN_KEY) throw new Error('set ADMIN_KEY')
+const base = process.argv[2] ?? 'http://localhost:8082'
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'screenshots')
 mkdirSync(out, { recursive: true })
 
@@ -27,7 +27,6 @@ const shots = [
 
 const page = await launch()
 try {
-  await page.send('Network.setCookie', { ...(await adminCookie(base, process.env.ADMIN_KEY)), url: base })
   for (const theme of ['dark', 'light']) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] })
     for (const [file, route, action] of shots) {

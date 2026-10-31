@@ -6,6 +6,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
-  // Dev: run the operator locally (admin port 8081), then `npm run dev` here.
-  server: { port: 5181, proxy: { '/api': 'http://127.0.0.1:8081' } },
+  // Dev: run the operator locally (admin on 127.0.0.1:8082), then `npm run dev` here.
+  server: { port: 5181, proxy: { '/api': 'http://127.0.0.1:8082' } },
 })

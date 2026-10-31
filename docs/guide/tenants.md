@@ -4,7 +4,21 @@ A tenant (Kubernetes kind: `Group`) is a namespace that is allowed to use LLMP. 
 
 <Shot name="tenants" alt="Tenants list" />
 
-## Create a tenant in the dashboard
+## With kubectl (recommended)
+
+```yaml
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: Group
+metadata:
+  name: billing               # = the tenant namespace
+  namespace: llmproxy-system
+spec:
+  channelRefs: [openai, anthropic]
+  rpmRatio: 1.0
+  tpmRatio: 1.0
+```
+
+## In the dashboard: create a tenant
 
 Open **Tenants → Create tenant**:
 
@@ -20,17 +34,3 @@ The tenant is **Ready** when it's enabled and at least one of its providers is u
 - A tenant can only reach the providers you assigned to it.
 - Keys can't pick another tenant: the tenant is always the key's own namespace.
 - If you give tenants permission to create `ProxyKey` objects in their namespace (Kubernetes RBAC), they can issue their own keys, still bound by the tenant's providers.
-
-## With kubectl
-
-```yaml
-apiVersion: llmproxy.llmproxy.io/v1alpha1
-kind: Group
-metadata:
-  name: billing               # = the tenant namespace
-  namespace: llmproxy-system
-spec:
-  channelRefs: [openai, anthropic]
-  rpmRatio: 1.0
-  tpmRatio: 1.0
-```

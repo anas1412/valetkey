@@ -15,8 +15,8 @@ export default defineConfig({
   themeConfig: {
     logo: '/logo.svg',
     nav: [
-      { text: 'Guide', link: '/guide/what-is-llmp' },
-      { text: 'Reference', link: '/reference/configuration' },
+      { text: 'Guide', link: '/guide/quick-start' },
+      { text: 'Reference', link: '/reference/helm' },
       { text: 'Releases', link: 'https://github.com/anas1412/llmp/releases' },
     ],
     sidebar: [
@@ -25,24 +25,32 @@ export default defineConfig({
         items: [
           { text: 'What is LLMP?', link: '/guide/what-is-llmp' },
           { text: 'Quick start', link: '/guide/quick-start' },
-          { text: 'Dashboard tour', link: '/guide/dashboard' },
         ],
       },
       {
-        text: 'Guides',
+        text: 'Working with LLMP',
         items: [
+          { text: 'kubectl & GitOps', link: '/guide/kubectl' },
+          { text: 'llmproxyctl CLI', link: '/guide/cli' },
           { text: 'Providers', link: '/guide/providers' },
           { text: 'Tenants', link: '/guide/tenants' },
           { text: 'API keys', link: '/guide/api-keys' },
           { text: 'Using a key in your app', link: '/guide/using-keys' },
           { text: 'Limits & access rules', link: '/guide/limits' },
-          { text: 'Security & audit trail', link: '/guide/security' },
+        ],
+      },
+      {
+        text: 'Operations',
+        items: [
+          { text: 'Security & access', link: '/guide/security' },
           { text: 'Monitoring', link: '/guide/monitoring' },
+          { text: 'Dashboard (optional)', link: '/guide/dashboard' },
         ],
       },
       {
         text: 'Reference',
         items: [
+          { text: 'Helm values', link: '/reference/helm' },
           { text: 'Configuration', link: '/reference/configuration' },
           { text: 'Custom resources', link: '/reference/crds' },
           { text: 'Admin API', link: '/reference/admin-api' },

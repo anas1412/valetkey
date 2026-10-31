@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynfake "k8s.io/client-go/dynamic/fake"
 
-	"github.com/anas1412/llmp/internal/auth"
 	"github.com/anas1412/llmp/internal/config"
 	"github.com/anas1412/llmp/internal/kube"
 	"github.com/anas1412/llmp/internal/registry"
@@ -30,14 +29,14 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 	})
 	kc := &kube.Client{Dynamic: dyn}
 	api := &API{Config: config.Config{OperatorNamespace: "llmproxy-system"}, Kube: kc, Registry: registry.New(),
-		Stats: stats.New(), Sessions: auth.NewSessions("admin")}
+		Stats: stats.New()}
 	mux := http.NewServeMux()
 	api.Register(mux)
 
 	call := func(method, path string, body any) int {
 		b, _ := json.Marshal(body)
-		req := httptest.NewRequest(method, path, bytes.NewReader(b))
-		req.Header.Set("Authorization", "Bearer admin")
+		req := httptest.NewRequest(method, "http://localhost:8082"+path, bytes.NewReader(b))
+		req.Header.Set("X-LLMP-Request", "1")
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code >= 300 {
@@ -74,5 +73,36 @@ func TestChannelCreateAndUpdate(t *testing.T) {
 
 	if code := call("POST", "/api/v1/channels", map[string]any{"name": "Bad Name", "spec": spec, "apiKey": "x"}); code != 400 {
 		t.Fatalf("invalid name accepted: %d", code)
+	}
+}
+
+// The admin API has no password, so it must refuse requests other websites could forge.
+func TestGuardRejectsForeignRequests(t *testing.T) {
+	api := &API{Registry: registry.New(), Stats: stats.New()}
+	mux := http.NewServeMux()
+	api.Register(mux)
+	try := func(url string, header bool) int {
+		req := httptest.NewRequest("GET", url, nil)
+		if header {
+			req.Header.Set("X-LLMP-Request", "1")
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for name, c := range map[string]struct {
+		url    string
+		header bool
+		want   int
+	}{
+		"local with header":          {"http://localhost:8082/api/v1/channels", true, 200},
+		"ipv4 loopback":              {"http://127.0.0.1:8082/api/v1/channels", true, 200},
+		"ipv6 loopback":              {"http://[::1]:8082/api/v1/channels", true, 200},
+		"no header (cross-site)":     {"http://localhost:8082/api/v1/channels", false, 403},
+		"other host (DNS rebinding)": {"http://evil.example:8082/api/v1/channels", true, 403},
+	} {
+		if got := try(c.url, c.header); got != c.want {
+			t.Errorf("%s: got %d, want %d", name, got, c.want)
+		}
 	}
 }

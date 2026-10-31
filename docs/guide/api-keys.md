@@ -4,7 +4,29 @@ An API key (Kubernetes kind: `ProxyKey`) is a virtual key for one app in a tenan
 
 <Shot name="keys" alt="API keys list" />
 
-## Create a key in the dashboard
+## With kubectl (recommended)
+
+```yaml
+apiVersion: llmproxy.llmproxy.io/v1alpha1
+kind: ProxyKey
+metadata:
+  name: invoice-api
+  namespace: billing           # the tenant
+spec:
+  models: [gpt-4o-mini]        # omit for every model the tenant's providers offer
+  subnets: [10.0.0.0/8]        # omit for any address
+  rpm: 120                     # requests per minute, omit for unlimited
+  tpm: 100000                  # tokens per minute, omit for unlimited
+```
+
+```bash
+kubectl apply -f key.yaml
+kubectl get pkey invoice-api -n billing     # READY turns true within a second or two
+```
+
+Disable, rotate and revoke from the terminal: see [kubectl & GitOps](/guide/kubectl#everyday-tasks) or [`llmproxyctl rotate`](/guide/cli#rotate-a-key).
+
+## In the dashboard: create a key
 
 Open **API keys → Create key**.
 
@@ -24,7 +46,7 @@ Expand a key to see its status, Secret, request count and last use, then **Show*
 
 <Shot name="key-details" alt="Key details with code snippets" />
 
-## Disable, rotate, delete
+## Disable, rotate, delete in the dashboard
 
 From the **Copy key** menu on each row:
 

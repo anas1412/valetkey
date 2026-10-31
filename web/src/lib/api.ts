@@ -11,20 +11,16 @@ export class ApiError extends Error {
   }
 }
 
-/** Called when the session expires so the app can show the sign-in screen. */
-let onUnauthorized: () => void = () => {}
-export function setUnauthorizedHandler(fn: () => void): void {
-  onUnauthorized = fn
-}
-
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // The admin API requires this header: other websites can't add it, so they can't
+  // use your open port-forward (see internal/admin guard).
+  const headers: Record<string, string> = { 'x-llmp-request': '1' }
+  if (body !== undefined) headers['content-type'] = 'application/json'
   const res = await fetch(`/api/v1${path}`, {
     method,
-    credentials: 'same-origin',
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (res.status === 401 && path !== '/session') onUnauthorized()
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     throw new ApiError(res.status, data.message ?? data.error?.message ?? `request failed (HTTP ${res.status})`)
@@ -35,10 +31,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 const enc = encodeURIComponent
 
 export const api = {
-  login: (key: string) => request<void>('POST', '/session', { key }),
-  logout: () => request<void>('DELETE', '/session'),
-  session: () => request<{ ok: true }>('GET', '/session'),
-
   overview: () => request<Overview>('GET', '/overview'),
   activity: () => request<{ requests: RequestEntry[]; events: OperatorEvent[] }>('GET', '/activity'),
   namespaces: () => request<Array<{ name: string; hasGroup: boolean }>>('GET', '/namespaces'),

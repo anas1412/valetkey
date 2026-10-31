@@ -1,6 +1,7 @@
-// Package server builds the two HTTP listeners:
-//   - proxy (8000): tenant-facing, serves only /v1/*
-//   - admin (8081): dashboard, admin API, /healthz, /readyz, /metrics
+// Package server builds the three HTTP listeners:
+//   - proxy (:8000): tenant-facing, serves only /v1/*
+//   - metrics (:8081): /healthz, /readyz, /metrics
+//   - admin (127.0.0.1:8082): dashboard and admin API, reached via kubectl port-forward
 package server
 
 import (
@@ -27,10 +28,9 @@ func Proxy(rl *relay.Relay, reg *registry.Registry, trustProxy string) http.Hand
 	})
 }
 
-// Admin is the internal handler. dashboard may be nil (admin API only).
-func Admin(api *admin.API, m *metrics.Metrics, reg *registry.Registry, ready func() bool, dashboard fs.FS) http.Handler {
+// Metrics serves health probes and Prometheus metrics (all interfaces).
+func Metrics(m *metrics.Metrics, reg *registry.Registry, ready func() bool) http.Handler {
 	mux := http.NewServeMux()
-	api.Register(mux)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { writeHealth(w, 200, reg) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
 		// 503 until every informer has loaded its initial list.
@@ -41,6 +41,14 @@ func Admin(api *admin.API, m *metrics.Metrics, reg *registry.Registry, ready fun
 		}
 	})
 	mux.Handle("GET /metrics", m.Handler())
+	return mux
+}
+
+// Admin serves the dashboard and admin API (pod loopback only, see config.AdminAddr).
+// dashboard may be nil (admin API only).
+func Admin(api *admin.API, dashboard fs.FS) http.Handler {
+	mux := http.NewServeMux()
+	api.Register(mux)
 	if dashboard != nil {
 		mux.Handle("GET /", spa(dashboard))
 	}

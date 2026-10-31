@@ -1,0 +1,11 @@
+apiVersion: v2
+name: llmp
+description: LLMP, a Kubernetes-native LLM proxy. Per-tenant API keys for OpenAI, Anthropic and any OpenAI-compatible model.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://anas.cyberia.tn/llmp/
+icon: https://anas.cyberia.tn/llmp/logo.svg
+sources:
+  - https://github.com/anas1412/llmp
+keywords: [llm, proxy, openai, anthropic, operator, api-gateway]
