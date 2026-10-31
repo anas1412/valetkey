@@ -358,6 +358,10 @@ sops --encrypt --encrypted-regex '^(data|stringData)$' --in-place valetkey/confi
 
 Other providers work the same way, one file each: `type: anthropic` for Anthropic, `type: openai` with another `baseURL` for DeepSeek, Groq, OpenRouter, Azure and other OpenAI-compatible APIs. See [Providers](/guide/providers).
 
+::: tip Prices for budgets
+Valetkey finds prices for the well-known APIs from their `baseURL`. For a self-hosted model, a proxy or any address it doesn't recognise, tell it which price list to use (`pricing.provider: openai`) or give your own prices; otherwise keys with a budget get `403 model_not_priced` for that provider. See [Budgets & costs](/guide/budgets#your-own-prices).
+:::
+
 ## 6. Add your first tenant and key
 
 A tenant is one file: its namespace, the `Tenant`, and one `ProxyKey` per app.
@@ -490,7 +494,7 @@ The `READY` column should be `true` for all of them. If not, the `MESSAGE` colum
 kubectl port-forward -n monitoring svc/prometheus-operated 9090
 ```
 
-Open <http://localhost:9090/targets>: the `valetkey` target should be `UP`, with one entry per Valetkey pod.
+Open <http://localhost:9090/targets>: the target `serviceMonitor/valetkey-system/valetkey/0` should be `UP`, with one entry per Valetkey pod. (With a plain Prometheus it's the `valetkey` job.)
 
 **Valetkey reads history from Prometheus:** open the dashboard
 
